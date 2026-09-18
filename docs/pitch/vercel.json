@@ -1,0 +1,1 @@
+{"$schema":"https://openapi.vercel.sh/vercel.json","framework":"vite","headers":[{"source":"/TRACE-deck.pdf","headers":[{"key":"Content-Disposition","value":"inline; filename=TRACE-deck.pdf"}]}]}

@@ -1,0 +1,12 @@
+{
+  "name": "trace-pitch", "version": "1.0.0", "private": true, "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "studio": "remotion studio src/video.tsx",
+    "render": "remotion render src/video.tsx TracePitch out/TRACE-pitch.mp4 --codec h264 --concurrency 2",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {"@remotion/cli": "4.0.354", "@remotion/player": "4.0.354", "react": "19.1.0", "react-dom": "19.1.0", "remotion": "4.0.354"},
+  "devDependencies": {"@types/react": "19.1.0", "@types/react-dom": "19.1.0", "typescript": "5.8.3", "vite": "6.3.5"}
+}

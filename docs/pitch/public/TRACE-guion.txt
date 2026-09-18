@@ -1,0 +1,112 @@
+TRACE - Guion de pitch | 3 minutos | Jurado de hackatón
+
+Versión basada en el prototipo del repositorio. Segmento y piloto son propuestas por validar.
+
+1. Tus datos salen. ¿Sabés adónde? [0:00-0:15]
+Todos los días nuestros dispositivos se conectan a servicios que no vemos. Cuando aparece una conexión desconocida, surge una pregunta simple: ¿adónde están yendo mis datos? TRACE nace para hacer visible ese recorrido y ayudarnos a entender qué merece nuestra atención.
+
+[Sources]
+https://github.com/mindsetwhite/TRACE-FIE-HACKATON-P/tree/main/TRACE
+Estado: README.md y SCOPE.md; interfaz: index.html; capturas: docs/qa/.
+Las escenas 6, 8 y el llamado al piloto expresan propuestas editoriales.
+[/Sources]
+
+2. Una conexión sin contexto es una pregunta sin respuesta. [0:15-0:35]
+Una dirección IP o una lista de paquetes no explican por sí solas qué está pasando. Para investigar necesitamos relacionar el dispositivo, el destino y el evento. Nuestra hipótesis es que reunir ese contexto en una vista comprensible puede ayudar a decidir qué revisar primero.
+
+[Sources]
+https://github.com/mindsetwhite/TRACE-FIE-HACKATON-P/tree/main/TRACE
+Estado: README.md y SCOPE.md; interfaz: index.html; capturas: docs/qa/.
+Las escenas 6, 8 y el llamado al piloto expresan propuestas editoriales.
+[/Sources]
+
+3. El recorrido, en una sola vista. [0:35-1:00]
+Esta es la propuesta de TRACE: un mapa de conexiones con un inspector que reúne origen, destino, protocolo y ruta. El prototipo permite explorar ese lenguaje visual tanto en escritorio como en móvil. Todo el tráfico que mostramos hoy es simulado: estamos presentando la experiencia, todavía no una herramienta conectada a una red real.
+
+[Sources]
+https://github.com/mindsetwhite/TRACE-FIE-HACKATON-P/tree/main/TRACE
+Estado: README.md y SCOPE.md; interfaz: index.html; capturas: docs/qa/.
+Las escenas 6, 8 y el llamado al piloto expresan propuestas editoriales.
+[/Sources]
+
+4. Cada flujo tiene una historia. [1:00-1:25]
+En la demo seleccionamos un flujo. Podemos ver de qué dispositivo sale, hacia dónde se dirige y los saltos representados en su recorrido. La interfaz también distingue rutas observadas, inferidas o desconocidas. Esa distinción forma parte del diseño: en el producto tendremos que validar qué podemos medir y con qué confianza, sin prometer visibilidad que no tenemos.
+
+[Sources]
+https://github.com/mindsetwhite/TRACE-FIE-HACKATON-P/tree/main/TRACE
+Estado: README.md y SCOPE.md; interfaz: index.html; capturas: docs/qa/.
+Las escenas 6, 8 y el llamado al piloto expresan propuestas editoriales.
+[/Sources]
+
+5. Una alerta abre la investigación. [1:25-1:50]
+Ahora aparece una alerta por un destino nuevo. En lugar de quedarse en una notificación aislada, la demo permite abrir el flujo asociado y recuperar su contexto. Un destino desconocido no demuestra un ataque: es una señal para investigar. Las alertas y los controles de esta pantalla son demostrativos; todavía no detectan ni bloquean tráfico real.
+
+[Sources]
+https://github.com/mindsetwhite/TRACE-FIE-HACKATON-P/tree/main/TRACE
+Estado: README.md y SCOPE.md; interfaz: index.html; capturas: docs/qa/.
+Las escenas 6, 8 y el llamado al piloto expresan propuestas editoriales.
+[/Sources]
+
+6. Empezar por quien necesita investigar. [1:50-2:10]
+Proponemos empezar con responsables de redes pequeñas y equipos técnicos que necesitan investigar conexiones. El caso inicial es concreto: identificar qué dispositivo originó una conexión y revisar el destino. Antes de ampliar el producto, queremos comprobar si esta experiencia les resulta comprensible y si reduce el tiempo necesario para encontrar ese contexto.
+
+[Sources]
+https://github.com/mindsetwhite/TRACE-FIE-HACKATON-P/tree/main/TRACE
+Estado: README.md y SCOPE.md; interfaz: index.html; capturas: docs/qa/.
+Las escenas 6, 8 y el llamado al piloto expresan propuestas editoriales.
+[/Sources]
+
+7. Una experiencia que ya podemos poner a prueba. [2:10-2:30]
+Hoy tenemos un prototipo navegable con mapa, detalle de flujos, dispositivos y alertas. Los dispositivos y las capas se guardan localmente. El siguiente hito es incorporar captura real en un entorno controlado y con consentimiento. También faltan backend y autenticación. Esa separación nos permite mostrar lo construido y enfocar con claridad el próximo experimento.
+
+[Sources]
+https://github.com/mindsetwhite/TRACE-FIE-HACKATON-P/tree/main/TRACE
+Estado: README.md y SCOPE.md; interfaz: index.html; capturas: docs/qa/.
+Las escenas 6, 8 y el llamado al piloto expresan propuestas editoriales.
+[/Sources]
+
+8. Validar con una red real. [2:30-2:50]
+El próximo experimento tiene tres pasos: obtener metadatos de conexiones en una red de prueba autorizada, relacionarlos con dispositivos y destinos, y medir si los usuarios resuelven una investigación con mayor claridad. Mediremos tiempo hasta identificar el contexto, comprensión de las rutas y utilidad de las alertas. Son criterios propuestos; todavía no tenemos resultados de un piloto.
+
+[Sources]
+https://github.com/mindsetwhite/TRACE-FIE-HACKATON-P/tree/main/TRACE
+Estado: README.md y SCOPE.md; interfaz: index.html; capturas: docs/qa/.
+Las escenas 6, 8 y el llamado al piloto expresan propuestas editoriales.
+[/Sources]
+
+9. Ver el recorrido. Entender la conexión. [2:50-3:00]
+TRACE quiere convertir conexiones invisibles en preguntas que podamos responder. Ya podemos probar la experiencia. Buscamos un entorno piloto y usuarios para validar el siguiente paso con tráfico real. Ver el recorrido. Entender la conexión.
+
+[Sources]
+https://github.com/mindsetwhite/TRACE-FIE-HACKATON-P/tree/main/TRACE
+Estado: README.md y SCOPE.md; interfaz: index.html; capturas: docs/qa/.
+Las escenas 6, 8 y el llamado al piloto expresan propuestas editoriales.
+[/Sources]
+
+PITCH CORTO - 30 segundos
+TRACE propone hacer visible adónde van tus datos. Reúne dispositivo, destino y ruta en una experiencia visual para investigar conexiones. Hoy contamos con un prototipo navegable en escritorio y móvil, con tráfico simulado. El siguiente paso es validar la experiencia con usuarios y capturar metadatos en una red autorizada. Buscamos un entorno piloto para hacerlo.
+
+DEMO EN VIVO - 40 segundos
+1. Abrir TRACE en escritorio: presentar mapa e inspector (10 s).
+2. Elegir un flujo y mostrar origen, destino y ruta (10 s).
+3. Abrir Alerts y el flujo asociado a un destino nuevo (10 s).
+4. Aclarar que tráfico, rutas, alertas y controles son demostrativos (10 s).
+Si se hace demo en vivo, reemplazar el relato de las escenas 4 y 5; no sumar otros 40 segundos.
+
+PREGUNTAS DEL JURADO
+¿Captura tráfico real? No. Hoy es un prototipo visual con datos simulados.
+¿Una alerta prueba un ataque? No. Es una señal para investigar.
+¿Puede bloquear tráfico? No en esta versión. El control de bloqueo es demostrativo.
+¿Qué sigue? Captura consentida en una red de prueba y validación con usuarios.
+¿Cómo se financiaría? No hay un modelo validado en el repositorio. Se puede explorar una suscripción por red o equipo después de validar el problema y la disposición a pagar.
+¿Cómo se validará la ruta? Medir la cobertura y expresar explícitamente tramos observados, inferidos y desconocidos.
+
+[Sources]
+Repositorio: https://github.com/mindsetwhite/TRACE-FIE-HACKATON-P
+Estado y límites: TRACE/README.md, TRACE/SCOPE.md, TRACE/DEVLOG.md
+Experiencia y mock: TRACE/index.html
+Capturas: TRACE/docs/qa/desktop-map.png, mobile-flow.png, mobile-alert.png
+Implementación de video: https://www.remotion.dev/docs/the-fundamentals
+Render: https://www.remotion.dev/docs/render
+Hipótesis editoriales: primer usuario, piloto y criterios de éxito. No representan resultados medidos.
+[/Sources]
