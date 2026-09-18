@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TRACE — See where your data goes</title>
+<meta name="color-scheme" content="dark">
+<style>
+:root{
+  --bg-0:#050b13;--bg-1:#08111d;--panel:rgba(11,22,37,.92);--panel-strong:#0d1828;
+  --line:rgba(130,174,222,.16);--line-strong:rgba(114,180,255,.34);
+  --text:#e7f1ff;--muted:#8091aa;--blue:#4ca3ff;--blue-hot:#74c0ff;--cyan:#5ce5e1;
+  --green:#4ce3a1;--amber:#ffbf47;--orange:#ff8a3d;--red:#ff596a;--focus:#8bc7ff;
+  --rs:6px;--rm:10px;--rl:16px;--glow:0 0 18px rgba(63,154,255,.24);
+  --rail:172px;--insp:380px;--top:48px;--deck:236px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg-0);color:var(--text);
+  font:12.5px/1.4 "Segoe UI","Helvetica Neue",ui-sans-serif,system-ui,sans-serif;
+  font-variant-numeric:tabular-nums;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+a{color:var(--blue-hot);text-decoration:none}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+
+/* ===== DESKTOP ===== */
+#desk{display:grid;height:100%;padding:8px 10px 10px;gap:8px;
+  grid-template-columns:var(--rail) minmax(0,1fr) var(--insp);
+  grid-template-rows:var(--top) minmax(0,1fr) var(--deck)}
+.top{grid-column:1/-1;display:flex;align-items:center;gap:18px;padding:0 10px;
+  background:linear-gradient(#0c1726,#0a1420);border:1px solid var(--line);border-radius:var(--rm)}
+.brand{display:flex;align-items:center;gap:10px;min-width:168px}
+.mark{width:28px;height:28px}
+.brand b{display:block;font-size:15px;letter-spacing:.18em;font-weight:700}
+.brand small{display:block;color:var(--muted);font-size:8.5px;letter-spacing:.14em;margin-top:-1px}
+.tabs{display:flex;gap:2px}
+.tabs a,.tabs button{padding:7px 12px;border-radius:8px;color:var(--muted);font-size:12.5px}
+.tabs a.on,.tabs button.on{color:var(--text);background:rgba(76,163,255,.12);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.search{flex:1;max-width:420px;margin-left:auto;position:relative}
+.search input{width:100%;background:#08101a;border:1px solid var(--line);border-radius:8px;padding:7px 12px 7px 32px;color:var(--text)}
+.search svg{position:absolute;left:10px;top:8px;color:var(--muted)}
+.livebox{display:flex;align-items:center;gap:10px;margin-left:8px;color:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);display:inline-block}
+.livebox .t{color:var(--text);font-weight:600}
+.av{width:28px;height:28px;border-radius:50%;background:#123;border:1px solid var(--line-strong);
+  display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--blue-hot)}
+
+.rail{background:var(--panel-strong);border:1px solid var(--line);border-radius:var(--rm);
+  display:flex;flex-direction:column;padding:10px 8px;overflow:auto}
+.navbtn{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-align:left;width:100%}
+.navbtn.on{background:rgba(76,163,255,.14);color:var(--text);box-shadow:var(--glow)}
+.navbtn:hover{color:var(--text);background:rgba(76,163,255,.07)}
+.layers{margin-top:auto;padding:10px 8px 4px;border-top:1px solid var(--line);flex-shrink:0}
+.layers h4{color:var(--muted);font-size:10px;letter-spacing:.16em;margin-bottom:8px;font-weight:600}
+.layers label{display:flex;align-items:center;gap:8px;padding:2px 0;color:#b7c6db;font-size:11.5px;cursor:pointer}
+.layers input{accent-color:var(--blue)}
+
+.stage{position:relative;border:1px solid var(--line);border-radius:var(--rm);overflow:hidden;min-width:0;
+  background:#02060c radial-gradient(circle at 20% 30%,#1a3a55 0,transparent 42%),radial-gradient(1px 1px at 30% 20%,#fff,transparent),radial-gradient(1px 1px at 70% 40%,#9cf,transparent),radial-gradient(1px 1px at 40% 70%,#fff,transparent)}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#labels{position:absolute;inset:0;pointer-events:none}
+.lbl{position:absolute;transform:translate(-50%,-120%);white-space:nowrap;text-align:center;pointer-events:none}
+.lbl b{display:block;font-size:11px;font-weight:650;text-shadow:0 0 8px #000}
+.lbl s{display:block;color:var(--muted);font-size:9.5px;text-decoration:none}
+.nd{width:11px;height:11px;border-radius:50%;border:2px solid #9fd2ff;background:#123;box-shadow:0 0 10px #4ca3ff;
+  position:absolute;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer}
+.nd.sat{border-color:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.nd.bad{border-color:var(--red);box-shadow:0 0 10px var(--red)}
+.nd.on{width:14px;height:14px;box-shadow:0 0 16px #74c0ff}
+.rttpill{position:absolute;transform:translate(-50%,-50%);background:#0c1c2ecc;border:1px solid var(--line-strong);
+  border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;pointer-events:none}
+
+.gcard{position:absolute;left:12px;top:12px;background:rgba(8,16,28,.82);border:1px solid var(--line);
+  border-radius:12px;padding:10px 12px;min-width:228px;backdrop-filter:blur(8px)}
+.gcard h3{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px}
+.rates{display:flex;gap:14px;align-items:baseline;font-size:18px;font-weight:700}
+.up{color:var(--blue-hot)} .dn{color:var(--cyan)}
+.rates small{font-size:11px;font-weight:500;color:var(--muted);margin-left:4px}
+.gstats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.gstats div{display:flex;flex-direction:column}
+.gstats b{font-size:14px} .gstats span{font-size:9.5px;color:var(--muted)}
+.al{color:var(--red)}
+.gctrl{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:6px}
+.gctrl button{width:28px;height:28px;border-radius:8px;background:rgba(8,16,28,.8);border:1px solid var(--line);color:var(--text)}
+.geohud{position:absolute;left:12px;bottom:34px;z-index:2;background:rgba(8,16,28,.82);border:1px solid var(--line);
+  border-radius:8px;padding:5px 8px;font-size:10px;color:var(--muted);letter-spacing:.06em;max-width:280px}
+.geohud b{color:var(--blue-hot);font-weight:650}
+.legend{position:absolute;right:12px;bottom:36px;background:rgba(8,16,28,.82);border:1px solid var(--line);
+  border-radius:10px;padding:8px 10px;font-size:11px}
+.legend h4{margin-bottom:6px;font-weight:600}
+.legend i{display:flex;align-items:center;gap:8px;color:var(--muted);font-style:normal;padding:2px 0}
+.legend i::before{content:"";width:18px;height:0;border-top:2px solid #6ec1ff}
+.legend i.inf::before{border-top-style:dashed;opacity:.7}
+.legend i.unk::before{border-top:2px dashed #6a7a8a}
+.legend i.act::before{border-top:2px solid var(--cyan);width:10px;height:10px;border-radius:50%;border:2px solid var(--cyan);background:transparent}
+.wm{position:absolute;left:14px;bottom:12px;display:flex;align-items:center;gap:8px;opacity:.55;font-size:9px;letter-spacing:.12em;color:var(--muted)}
+
+.insp{background:var(--panel-strong);border:1px solid var(--line);border-radius:var(--rm);
+  display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.insp-h{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px}
+.insp-h h2{font-size:16px} .pill{font-size:10px;color:var(--green);border:1px solid rgba(76,227,161,.35);
+  padding:2px 8px;border-radius:99px;display:flex;align-items:center;gap:6px}
+.itabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--line)}
+.itabs button{padding:8px 10px;color:var(--muted);border-bottom:2px solid transparent}
+.itabs button.on{color:var(--text);border-bottom-color:var(--blue)}
+.insp-b{flex:1;overflow:auto;padding:12px 14px}
+.sd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0 12px;border-bottom:1px solid var(--line)}
+.ent{display:flex;align-items:center;gap:8px;min-width:0}
+.ic{width:28px;height:28px;border-radius:8px;background:#102033;border:1px solid var(--line);
+  display:grid;place-items:center;color:var(--blue-hot);flex:none}
+.ent b{display:block} .ent span{color:var(--muted);font-size:11px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;padding:12px 0}
+.meta .k{color:var(--muted);font-size:10.5px} .meta .v{font-weight:650}
+.enc{color:var(--green);border:1px solid rgba(76,227,161,.3);padding:1px 7px;border-radius:99px;font-size:11px}
+.routeh{display:flex;justify-content:space-between;align-items:center;margin:8px 0}
+.rrow{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:start;padding:6px 0}
+.rrow .dotl{width:10px;height:10px;border-radius:50%;margin:3px 3px 0;background:var(--blue);box-shadow:0 0 8px var(--blue);position:relative}
+.rrow .dotl::after{content:"";position:absolute;left:4px;top:10px;width:2px;height:18px;background:rgba(76,163,255,.25)}
+.rrow:last-child .dotl::after{display:none}
+.rrow .ms{color:var(--muted)}
+
+.deck{grid-column:1/3;display:grid;grid-template-columns:minmax(0,1.6fr) 210px 250px;gap:8px;min-height:0}
+.panel{background:var(--panel-strong);border:1px solid var(--line);border-radius:var(--rm);padding:10px 12px;display:flex;flex-direction:column;min-width:0}
+.ph{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ph h3{font-size:13px;font-weight:650;flex:1}
+.ph .tools{margin-left:auto;display:flex;gap:6px;align-items:center;color:var(--muted)}
+.ph input,.ph select{background:#08101a;border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th{color:var(--muted);font-weight:500;text-align:left;padding:4px 6px;border-bottom:1px solid var(--line)}
+td{padding:4px 6px;border-bottom:1px solid rgba(130,174,222,.08);white-space:nowrap}
+.dir-out{color:var(--red);font-weight:700} .dir-in{color:var(--green);font-weight:700}
+.dest row,.drow{display:flex;align-items:center;gap:8px;padding:5px 0}
+.bar{flex:1;height:4px;background:#132033;border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan))}
+.badge{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-size:9px;font-weight:800}
+.alert{display:flex;gap:8px;padding:8px;border-radius:8px;margin-bottom:6px;background:rgba(255,89,106,.06);border:1px solid rgba(255,89,106,.18);cursor:pointer}
+.alert.warn{background:rgba(255,191,71,.06);border-color:rgba(255,191,71,.2)}
+.alert.info{background:rgba(76,163,255,.06);border-color:var(--line)}
+.alert h5{font-size:12px} .alert p{color:var(--muted);font-size:11px}
+.view{color:var(--blue-hot);font-size:11px}
+
+/* pages inside stage */
+.page{position:absolute;inset:0;overflow:auto;padding:16px 18px;background:var(--bg-1);display:none}
+.page.on{display:block}
+.page h2{font-size:18px;margin-bottom:12px}
+.toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
+.btn{background:rgba(76,163,255,.12);border:1px solid var(--line-strong);border-radius:8px;padding:6px 12px;color:var(--text)}
+.btn.danger{border-color:rgba(255,89,106,.4);color:var(--red)}
+.btn.pri{background:var(--blue);color:#041018;font-weight:700;border:0}
+table.crud td,table.crud th{padding:8px 8px}
+
+/* ===== MOBILE ===== */
+#mobi{display:none;height:100%;flex-direction:column;background:var(--bg-0);padding:env(safe-area-inset-top) 0 0}
+.mbar{display:flex;align-items:center;justify-content:space-between;padding:10px 18px 0}
+.mscreen{flex:1;min-height:0;overflow:auto;padding:8px 16px 84px;display:none}
+.mscreen.on{display:block}
+.mnav{position:fixed;left:0;right:0;bottom:0;height:calc(64px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);
+  background:#071018ee;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);z-index:20}
+.mnav button{color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;padding-top:8px}
+.mnav button.on{color:var(--blue-hot)}
+.hero h1{font-size:30px;letter-spacing:-.03em;line-height:1.05;margin:8px 0 6px}
+.hero p{color:var(--muted);margin-bottom:8px}
+.mglobe{height:42vh;min-height:220px;position:relative;border-radius:16px;overflow:hidden}
+.mcard{background:rgba(10,20,34,.9);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:8px}
+.seg{display:flex;background:#0a1522;border-radius:10px;padding:3px}
+.seg button{flex:1;padding:6px;border-radius:8px;color:var(--muted)}
+.seg button.on{background:#13283d;color:var(--text)}
+.chips{display:flex;gap:6px;margin:10px 0;overflow:auto}
+.chips button{padding:6px 12px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chips button.on{color:var(--text);background:rgba(76,163,255,.12);border-color:var(--line-strong)}
+.trow{display:flex;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.trow .grow{flex:1;min-width:0}
+.trow b{display:block;font-size:14px}
+.apro{display:flex;align-items:center;gap:10px;padding:8px 0}
+.apro .bar{flex:1}
+.alpage{text-align:center;padding-top:24px}
+.alpage .boom{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;background:radial-gradient(circle,rgba(255,89,106,.35),transparent 70%);
+  display:grid;place-items:center;font-size:28px;color:var(--red)}
+.alpage h1{font-size:22px;margin:0 12px 8px;line-height:1.15}
+.cta{width:100%;padding:12px;border-radius:12px;font-weight:700;margin-top:8px}
+.cta.red{background:var(--red);color:#1a0508}
+.cta.ghost{border:1px solid var(--line);color:var(--text)}
+.sticky{position:sticky;bottom:72px}
+
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;place-items:center;z-index:40}
+.modal.on{display:grid}
+.box{width:min(420px,92vw);background:#0d1828;border:1px solid var(--line-strong);border-radius:14px;padding:16px}
+.box h3{margin-bottom:12px}
+.box label{display:block;color:var(--muted);font-size:11px;margin:8px 0 4px}
+.box input,.box select{width:100%;background:#08101a;border:1px solid var(--line);border-radius:8px;padding:8px}
+.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:#123;border:1px solid var(--line-strong);
+  padding:8px 14px;border-radius:8px;display:none;z-index:50}
+.toast.on{display:block}
+
+@media(max-width:899px){
+  #desk{display:none} #mobi{display:flex}
+  body{overflow:auto}
+}
+@media(min-width:900px) and (max-width:1279px){
+  :root{--rail:56px;--insp:320px;--deck:210px}
+  .brand small,.navbtn span,.layers{display:none}
+  .navbtn{justify-content:center}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div id="desk">
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 8 L16 28 L28 8" fill="none" stroke="#4ca3ff" stroke-width="2"/><path d="M10 8 L16 20 L22 8" fill="#4ca3ff"/></svg>
+      <div><b>TRACE</b><small>SEE WHERE YOUR DATA GOES</small></div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button type="button" data-go="map" class="on">Map</button>
+      <button type="button" data-go="xray">X-Ray</button>
+      <button type="button" data-go="packets">Packets</button>
+      <button type="button" data-go="devices">Devices</button>
+      <button type="button" data-go="alerts">Alerts</button>
+      <button type="button" data-go="reports">Reports</button>
+    </nav>
+    <div class="search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
+      <input id="q" placeholder="Search IP, ASN, organization…" autocomplete="off">
+    </div>
+    <div class="livebox"><span class="t" id="clock">--:--:--</span> <span class="dot"></span> LIVE <div class="av" title="Lucas Arias">LA</div></div>
+  </header>
+
+  <aside class="rail">
+    <button class="navbtn on" data-go="map" id="nb-live">◉ <span>Live View</span></button>
+    <button class="navbtn" data-go="devices">▣ <span>Devices</span></button>
+    <button class="navbtn" data-go="infra">⬡ <span>Infrastructure</span></button>
+    <button class="navbtn" data-go="alerts">⚠ <span>Threats</span></button>
+    <button class="navbtn" data-go="reports">▦ <span>Analytics</span></button>
+    <button class="navbtn" data-go="settings">⚙ <span>Settings</span></button>
+    <div class="layers" id="layers"></div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <canvas id="globe" aria-label="TRACE globe"></canvas>
+    <div id="labels"></div>
+    <div class="gcard" id="gcard">
+      <h3>Global Traffic</h3>
+      <div class="rates"><span class="up">↑ <b id="up">38.4</b><small>Mbps</small></span><span class="dn">↓ <b id="dn">4.8</b><small>Mbps</small></span></div>
+      <div class="gstats">
+        <div><b id="nflows">2,847</b><span>Active Flows</span></div>
+        <div><b>38</b><span>Destinations</span></div>
+        <div><b>98.7%</b><span>Encrypted</span></div>
+        <div><b class="al" id="nalerts">2</b><span>Alerts</span></div>
+      </div>
+    </div>
+    <div class="gctrl">
+      <button type="button" data-act="plus" title="Zoom in">+</button>
+      <button type="button" data-act="minus" title="Zoom out">−</button>
+      <button type="button" data-act="reset" title="Reset">↺</button>
+    </div>
+    <div class="legend">
+      <h4>Route Legend</h4>
+      <i>Observed</i><i class="inf">Inferred</i><i class="unk">Unknown</i><i class="act">Active Flow</i>
+    </div>
+    <div class="geohud" id="geohud">ONU / OEA · NE 110m</div>
+    <div class="wm"><svg width="16" height="16" viewBox="0 0 32 32"><path d="M4 8 L16 28 L28 8" fill="none" stroke="#4ca3ff" stroke-width="2"/></svg> A MORE TRANSPARENT AND SECURE INTERNET</div>
+
+    <section class="page" id="page-xray"></section>
+    <section class="page" id="page-packets"></section>
+    <section class="page" id="page-devices"></section>
+    <section class="page" id="page-alerts"></section>
+    <section class="page" id="page-reports"></section>
+    <section class="page" id="page-infra"></section>
+    <section class="page" id="page-settings"></section>
+  </main>
+
+  <aside class="insp" id="insp"></aside>
+
+  <section class="deck">
+    <div class="panel">
+      <div class="ph">
+        <button type="button" aria-label="Pause">❚❚</button>
+        <h3>Live Packet Stream</h3>
+        <div class="tools">
+          <input id="pf" placeholder="Filter by IP, domain, protocol, process…">
+          <select id="pdev"><option>All Devices</option></select>
+          <span class="dot"></span> Live · 1s
+        </div>
+      </div>
+      <div style="overflow:auto;flex:1">
+        <table>
+          <thead><tr><th>Time</th><th>Direction</th><th>Source</th><th>Destination</th><th>Protocol</th><th>Size</th><th>Info</th></tr></thead>
+          <tbody id="pkts"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><h3>Top Destinations (Live)</h3><span class="view">Bytes · Packets · Flows</span></div>
+      <div id="dests"></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><h3>Threats & Anomalies</h3><button class="view" data-go="alerts">View All</button></div>
+      <div id="threats"></div>
+    </div>
+  </section>
+</div>
+
+<div id="mobi">
+  <div class="mbar">
+    <div class="brand" id="mbrand"></div>
+    <div class="av">LA</div>
+  </div>
+  <div id="mroot" class="mscreen on"></div>
+  <nav class="mnav">
+    <button type="button" data-m="home" class="on"><span>⌂</span><span>Home</span></button>
+    <button type="button" data-m="devices"><span>▣</span><span>Devices</span></button>
+    <button type="button" data-m="map"><span>◎</span><span>Map</span></button>
+    <button type="button" data-m="alerts"><span>⚑</span><span>Alerts</span></button>
+  </nav>
+</div>
+
+<div class="modal" id="modal"></div>
+<div class="toast" id="toast"></div>
+<div class="sr" aria-live="polite" id="live"></div>
+
+<script src="geo.js"></script>
+<script>
+(function(){
+"use strict";
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const NODES = [
+  {id:"ba", name:"Buenos Aires", sub:"AR (ISP)", lat:-34.6, lon:-58.38, kind:"origin"},
+  {id:"la", name:"Los Angeles", sub:"US (DC)", lat:34.05, lon:-118.24, kind:"dc"},
+  {id:"mia", name:"Miami", sub:"US (IXP)", lat:25.76, lon:-80.19, kind:"ixp"},
+  {id:"lon", name:"London", sub:"UK (DC)", lat:51.5, lon:-0.12, kind:"dc"},
+  {id:"sp", name:"Sao Paulo", sub:"BR (IXP)", lat:-23.55, lon:-46.63, kind:"ixp"},
+  {id:"sat", name:"LEO-1", sub:"LEO", lat:8, lon:-40, kind:"sat", alt:1.22},
+  {id:"nl", name:"Países Bajos", sub:"NL", lat:52.37, lon:4.89, kind:"bad"}
+];
+const SATS=[
+  {id:"sat", name:"LEO-1", r:1.22, inc:0.95, raan:0.55, w:Math.PI*2/(92*60*1000), phase:0.4, color:"#5ce5e1"},
+  {id:"sat2", name:"LEO-2", r:1.28, inc:0.72, raan:2.35, w:Math.PI*2/(98*60*1000), phase:2.2, color:"#74c0ff"},
+  {id:"sat3", name:"LEO-3", r:1.18, inc:1.12, raan:4.05, w:Math.PI*2/(88*60*1000), phase:4.1, color:"#c4a574"}
+];
+
+const ORGS = [
+  {id:"cf", name:"Cloudflare", asn:13335, pct:34.2, color:"#f6821f"},
+  {id:"gg", name:"Google", asn:15169, pct:18.7, color:"#4285f4"},
+  {id:"wa", name:"WhatsApp", asn:32934, pct:8.4, color:"#25d366"},
+  {id:"oa", name:"OpenAI", asn:8075, pct:8.1, color:"#10a37f"},
+  {id:"am", name:"Amazon", asn:16509, pct:6.1, color:"#ff9900"},
+  {id:"ms", name:"Microsoft", asn:8075, pct:4.9, color:"#00a4ef"},
+  {id:"ap", name:"Apple", asn:714, pct:3.7, color:"#a2aaad"},
+  {id:"ot", name:"Otros", asn:0, pct:12.9, color:"#8091aa"}
+];
+
+const HOPS_CF = [
+  {icon:"lap", name:"MacBook Pro", meta:"192.168.0.14 · Your Device", ms:"0 ms"},
+  {icon:"rtr", name:"Router (192.168.0.1)", meta:"Local Network", ms:"1 ms"},
+  {icon:"tow", name:"Telecom Argentina (AS7303)", meta:"Buenos Aires, AR", ms:"7 ms"},
+  {icon:"ixp", name:"IXP Buenos Aires", meta:"Buenos Aires, AR", ms:"12 ms"},
+  {icon:"bb", name:"Backbone (Level 3 / Lumen)", meta:"Sao Paulo, BR", ms:"42 ms"},
+  {icon:"ixp", name:"Miami (Equinix)", meta:"Miami, US", ms:"18 ms"},
+  {icon:"cld", name:"Cloudflare (AS13335)", meta:"Miami, US", ms:"8 ms"}
+];
+const HOPS_GG = [
+  {icon:"lap", name:"MacBook Pro", meta:"192.168.0.14", ms:"1 ms"},
+  {icon:"rtr", name:"Router", meta:"Tu red local", ms:"2 ms"},
+  {icon:"tow", name:"Telecom Argentina AS7303", meta:"", ms:"7 ms"},
+  {icon:"ixp", name:"Buenos Aires (IXP)", meta:"NAP Argentina", ms:"12 ms"},
+  {icon:"ixp", name:"Miami", meta:"US (IX)", ms:"42 ms"},
+  {icon:"cld", name:"Google", meta:"AS15169", ms:"18 ms"}
+];
+
+let devices = JSON.parse(localStorage.getItem("trace.devices")||"null") || [
+  {id:"mba", name:"MacBook Pro", type:"laptop", ip:"192.168.0.14", net:"Wi-Fi 6", status:"online", up:12.4, down:3.1, critical:true},
+  {id:"iph", name:"iPhone de Lucas", type:"phone", ip:"192.168.0.23", net:"Wi-Fi 6", status:"online", up:1.1, down:0.4, critical:false}
+];
+const flows = [
+  {id:"A81F23", src:"mba", dstIp:"104.18.32.14", dstName:"Cloudflare", org:"cf", city:"Miami, US",
+    proto:"TCP → TLS 1.3 → HTTPS", enc:true, up:84, down:2.7, rtt:136, hops:HOPS_CF,
+    path:["ba","mia"], status:"ACTIVE", conf:82, pkts:[1428,612,816], route:["ba","sp","mia"]},
+  {id:"G7B201", src:"mba", dstIp:"142.250.66.78", dstName:"google.com", org:"gg", city:"",
+    proto:"TCP → TLS 1.3", enc:true, up:84, down:2.7, rtt:136, hops:HOPS_GG,
+    path:["ba","mia","la"], status:"ACTIVE", conf:90, pkts:[900,400,500], route:["ba","mia"]},
+  {id:"X9BAD", src:"mba", dstIp:"185.220.101.5", dstName:"unknown", org:"ot", city:"Países Bajos",
+    proto:"TCP", enc:false, up:17, down:0.2, rtt:210, hops:[],
+    path:["ba","nl"], status:"ACTIVE", conf:41, pkts:[120,80,40], route:["ba","nl"], bad:true}
+];
+const alerts = [
+  {id:"a1", sev:"critical", title:"Nuevo destino detectado", rule:"New destination", when:"11s ago",
+    body:"Tu dispositivo se conectó a un destino inusual por primera vez.",
+    ev:"185.220.101.5 · Países Bajos · AS47835 · 17 MB · 18:31", flow:"X9BAD"},
+  {id:"a2", sev:"warn", title:"Unusual data volume", rule:"Volume", when:"24m ago",
+    body:"IoT Device → unknown ASN · 5.2 MB in 1 min · Baseline 120 KB", flow:"X9BAD"},
+  {id:"a3", sev:"info", title:"New device “iPhone de Lucas”", rule:"New device", when:"2h ago",
+    body:"Joined network 192.168.0.23", flow:null}
+];
+const APPS = [
+  {n:"Google", p:28, c:"#4285f4"},{n:"YouTube", p:18, c:"#ff0000"},{n:"WhatsApp", p:14, c:"#25d366"},
+  {n:"OpenAI", p:12, c:"#10a37f"},{n:"iCloud", p:8, c:"#369"},{n:"Spotify", p:6, c:"#1db954"},{n:"Otros", p:14, c:"#8091aa"}
+];
+const TRAFFIC = [
+  {app:"google.com", ip:"104.18.32.14", t:"09:41:12", up:"84 KB", dn:"2.7 MB", proto:"TLS", ic:"G", bad:false, flow:"G7B201"},
+  {app:"whatsapp.net", ip:"31.13.66.35", t:"09:41:10", up:"12 KB", dn:"320 KB", proto:"TLS", ic:"W", bad:false, flow:"A81F23"},
+  {app:"api.openai.com", ip:"104.18.32.123", t:"09:41:08", up:"24 KB", dn:"1.2 MB", proto:"TLS", ic:"O", bad:false, flow:"A81F23"},
+  {app:"icloud.com", ip:"17.253.144.10", t:"09:41:02", up:"6 KB", dn:"450 KB", proto:"TLS", ic:"i", bad:false, flow:"A81F23"},
+  {app:"unknown", ip:"185.220.101.5", t:"09:40:58", up:"17 MB", dn:"—", proto:"TCP", ic:"?", bad:true, flow:"X9BAD"}
+];
+
+const LAYERS = ["Devices","ISP / Telecom","IXP","Backbone","Submarine Cables","Satellites","Data Centers","Cloud Providers","Geography"];
+const layerOn = JSON.parse(localStorage.getItem("trace.layers")||"null") || Object.fromEntries(LAYERS.map(x=>[x,true]));
+
+const S = {
+  page:"map", m:"home", flow:"A81F23", tab:"Overview", mtab:"Route",
+  dtab:"Apps", tfilter:"Todo", device:"mba", alert:"a1", q:""
+};
+
+function saveDev(){ localStorage.setItem("trace.devices", JSON.stringify(devices)); }
+function toast(m){ const t=$("#toast"); t.textContent=m; t.className="toast on"; setTimeout(()=>t.className="toast", 2200); }
+function go(hash){ location.hash = hash; }
+
+/* ---------- globe ---------- */
+const G = {
+  ry: 2.62, rx: 0.28, dist: 2.45, dragging:false, lx:0, ly:0, auto:!reduced,
+  vrx:0, vry:0, lt:0, lastT:0, preview:false
+};
+const DIST_MIN=0.012, DIST_MAX=4.6;
+let geoTimer=0;
+const OAS_ISO="ATG ARG BHS BRB BLZ BOL BRA CAN CHL COL CRI CUB DMA DOM ECU SLV GRD GTM GUY HTI HND JAM MEX NIC PAN PRY PER KNA LCA VCT SUR TTO USA URY VEN".split(" ");
+const GEO_CDN="https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/";
+const NE_CDN="https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/";
+
+function latlon(lat,lon,r=1){
+  const a=lat*Math.PI/180, o=lon*Math.PI/180, c=Math.cos(a);
+  return [c*Math.cos(o)*r, Math.sin(a)*r, c*Math.sin(o)*r];
+}
+function mul(a,b){
+  const r=new Float32Array(16);
+  for(let i=0;i<4;i++) for(let j=0;j<4;j++) r[i*4+j]=a[i*4]*b[j]+a[i*4+1]*b[4+j]+a[i*4+2]*b[8+j]+a[i*4+3]*b[12+j];
+  return r;
+}
+function rotXY(rx,ry){
+  const cx=Math.cos(rx),sx=Math.sin(rx),cy=Math.cos(ry),sy=Math.sin(ry);
+  const Rx=new Float32Array([1,0,0,0, 0,cx,sx,0, 0,-sx,cx,0, 0,0,0,1]);
+  const Ry=new Float32Array([cy,0,-sy,0, 0,1,0,0, sy,0,cy,0, 0,0,0,1]);
+  return mul(Rx,Ry);
+}
+
+let glCanvas, ctx2d, arcs=[], COASTS=[], BORDERS=[];
+let earthLayer=null, earthKey="", earthCtx=null, lastLbl=0, earthSnap=null, _Mk="", _M=null;
+const LOD={110:{land:null,borders:null},50:{land:null,borders:null},10:{land:null,borders:null}};
+const PLACES=[];
+const ADM={};
+const GEO={lod:110, note:"ONU/OEA · NE 110m", focusIso:"ARG"};
+const CITIES=[[-58.38,-34.6],[-118.24,34.05],[-80.19,25.76],[-0.12,51.5],[-46.63,-23.55],[-74.01,40.71],[-3.7,40.42],[2.35,48.86],[13.41,52.52],[12.5,41.9],[-99.13,19.43],[-43.17,-22.91],[-70.67,-33.45],[-77.03,-12.05],[37.62,55.75],[139.69,35.69],[121.47,31.23],[114.17,22.32],[103.82,1.35],[151.21,-33.87],[144.96,-37.81],[18.42,-33.92],[28.05,-26.20],[3.38,6.52],[31.24,30.04],[39.16,21.49],[77.21,28.61],[72.88,19.08],[88.36,22.57],[100.50,13.76],[106.63,10.82],[-6.26,53.35],[-9.14,38.72],[4.90,52.37],[12.57,55.68],[18.07,59.33],[28.98,41.01],[-122.42,37.77],[-87.63,41.88],[-95.37,29.76],[-79.38,43.65],[-123.12,49.28],[55.27,25.20],[67.00,24.86],[-0.13,5.60],[32.58,-25.97],[116.41,39.90],[127.02,37.57],[135.50,34.69],[-47.93,-15.78],[-56.16,-34.90],[8.68,50.11],[4.35,50.85],[16.37,48.21],[-71.06,42.36],[-75.16,39.95],[23.32,42.70],[-1.90,52.48]];
+
+function unpackRing(arr,s){
+  let x=arr[0], y=arr[1]; const pts=[[x*s,y*s]];
+  for(let i=2;i<arr.length;i+=2){ x+=arr[i]; y+=arr[i+1]; pts.push([x*s,y*s]); }
+  return indexRing(pts);
+}
+function indexRing(ring){
+  const r=ring.ring||ring;
+  let minx=180,maxx=-180,miny=90,maxy=-90;
+  for(let i=0;i<r.length;i++){
+    const lo=r[i][0], la=r[i][1];
+    if(lo<minx)minx=lo; if(lo>maxx)maxx=lo;
+    if(la<miny)miny=la; if(la>maxy)maxy=la;
+  }
+  r._bb=ring._bb=[minx,miny,maxx,maxy];
+  if(ring.ring) ring.ring._bb=ring._bb;
+  return ring;
+}
+function indexRings(list){
+  if(!list) return list;
+  for(let i=0;i<list.length;i++) indexRing(list[i]);
+  return list;
+}
+function loadGeo(){
+  const g=window.TRACE_GEO; if(!g||COASTS.length) return;
+  COASTS=(g.land||[]).map(r=>unpackRing(r,g.s));
+  BORDERS=(g.borders||[]).map(r=>unpackRing(r,g.s));
+  LOD[110].land=COASTS; LOD[110].borders=BORDERS;
+  bakeLod(110);
+}
+
+function compileRings(rings){
+  const out=[];
+  if(!rings) return out;
+  for(let i=0;i<rings.length;i++){
+    const src=rings[i], r=src.ring||src, n=r.length;
+    if(n<2) continue;
+    const xyz=new Float32Array(n*3);
+    let sx=0,sy=0,sz=0;
+    for(let k=0;k<n;k++){
+      const p=latlon(r[k][1], r[k][0]);
+      xyz[k*3]=p[0]; xyz[k*3+1]=p[1]; xyz[k*3+2]=p[2];
+      sx+=p[0]; sy+=p[1]; sz+=p[2];
+    }
+    const inv=1/n;
+    out.push({xyz,n,c:[sx*inv,sy*inv,sz*inv], bb:r._bb||src._bb, name:src.name||""});
+  }
+  return out;
+}
+function bakeLod(m){
+  const L=LOD[m]; if(!L||!L.land) return;
+  L.meshLand=compileRings(L.land);
+  L.meshBorders=compileRings(L.borders||[]);
+}
+function rotCached(){
+  const k=G.rx.toFixed(5)+","+G.ry.toFixed(5);
+  if(k===_Mk && _M) return _M;
+  _Mk=k; _M=rotXY(G.rx,G.ry); return _M;
+}
+function strokeMesh(ctx, mesh, close){
+  if(!mesh||!mesh.length) return;
+  const M=rotCached(), R=globeR();
+  const cx=glCanvas.clientWidth/2, cy=glCanvas.clientHeight*0.52;
+  const m0=M[0],m4=M[4],m8=M[8], m1=M[1],m5=M[5],m9=M[9], m2=M[2],m6=M[6],m10=M[10];
+  const zCull=-0.28;
+  ctx.beginPath();
+  for(let r=0;r<mesh.length;r++){
+    const ring=mesh[r], c=ring.c;
+    const Zc=m2*c[0]+m6*c[1]+m10*c[2];
+    if(Zc<zCull) continue;
+    const xyz=ring.xyz, n=ring.n;
+    let pen=false;
+    for(let i=0;i<n;i++){
+      const x=xyz[i*3], y=xyz[i*3+1], z=xyz[i*3+2];
+      const X=m0*x+m4*y+m8*z, Y=m1*x+m5*y+m9*z, Z=m2*x+m6*y+m10*z;
+      if(Z<-0.12){ pen=false; continue; }
+      let px, py;
+      if(Z<0.05){
+        const hy=Math.hypot(X,Y)||1e-6, s=Math.sqrt(0.9975)/hy;
+        px=cx-X*s*R; py=cy-Y*s*R;
+      } else { px=cx-X*R; py=cy-Y*R; }
+      if(!pen){ ctx.moveTo(px,py); pen=true; } else ctx.lineTo(px,py);
+    }
+    if(close && pen) ctx.closePath();
+  }
+  ctx.stroke();
+}
+function captureSnap(){
+  if(!earthLayer) return;
+  if(!earthSnap) earthSnap=document.createElement("canvas");
+  if(earthSnap.width!==earthLayer.width || earthSnap.height!==earthLayer.height){
+    earthSnap.width=earthLayer.width; earthSnap.height=earthLayer.height;
+  }
+  earthSnap.getContext("2d").drawImage(earthLayer,0,0);
+  earthSnap.rx=G.rx; earthSnap.ry=G.ry; earthSnap.dist=G.dist; earthSnap.ok=true;
+}
+function blitSnap(ctx, w, h){
+  const scale=earthSnap.dist/G.dist;
+  const cx=w/2, cy=h*0.52;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle="#02060c"; ctx.fillRect(0,0,w,h);
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality="high";
+  ctx.save();
+  ctx.translate(cx,cy); ctx.scale(scale,scale); ctx.translate(-cx,-cy);
+  ctx.drawImage(earthSnap,0,0);
+  ctx.restore();
+}
+
+function globeR(){
+  if(!glCanvas) return 1;
+  return Math.min(glCanvas.clientWidth, glCanvas.clientHeight)*0.42*(2.6/G.dist);
+}
+function lodLevel(){
+  if(G.dist>2.05) return 110;
+  if(G.dist>0.92) return 50;
+  return 10;
+}
+function spinning(){ return !G.dragging && (Math.abs(G.vry)+Math.abs(G.vrx)>2.5e-5); }
+function previewing(){ return G.preview || G.dragging || spinning(); }
+function lodPaint(){
+  if(G.lodLock) return G.lodLock;
+  if(G.auto && !G.dragging) return 110;
+  return lodLevel();
+}
+function lockLod(){
+  const want=G.dist>1.2?110:G.dist>0.7?50: (LOD[10].meshLand?10:50);
+  G.lodLock = (LOD[want]&&LOD[want].meshLand) ? want : (LOD[50].meshLand?50:110);
+}
+function setDist(d){
+  G.dist=Math.max(DIST_MIN, Math.min(DIST_MAX, d));
+  G.auto=false;
+  G.preview=true;
+  lockLod();
+  earthKey="";
+  clearTimeout(geoTimer);
+  geoTimer=setTimeout(()=>{ G.preview=false; G.lodLock=0; earthKey=""; needGeo(); }, 220);
+}
+function topoArcs(topo){
+  const t=topo.transform, sx=t.scale[0], sy=t.scale[1], tx=t.translate[0], ty=t.translate[1];
+  return topo.arcs.map(arc=>{
+    const pts=[]; let x=0,y=0;
+    for(let i=0;i<arc.length;i++){ x+=arc[i][0]; y+=arc[i][1]; pts.push([x*sx+tx, y*sy+ty]); }
+    return pts;
+  });
+}
+function decodeArc(arcs,i){
+  const a = i<0 ? (arcs[~i]||[]) : (arcs[i]||[]);
+  return i<0 ? a.slice().reverse() : a;
+}
+function topoRings(topo, obj){
+  const arcs=topoArcs(topo);
+  const geoms=(topo.objects[obj]&&topo.objects[obj].geometries)||[];
+  const rings=[];
+  const join=idxs=>{
+    let r=[];
+    for(let n=0;n<(idxs||[]).length;n++){ const a=decodeArc(arcs, idxs[n]); r=r.concat(n?a.slice(1):a); }
+    return r;
+  };
+  const walk=(g,type)=>{
+    if(!g) return;
+    if(type==="MultiPolygon") g.forEach(poly=>poly.forEach(ring=>rings.push(join(ring))));
+    else if(type==="Polygon" || (g[0] && typeof g[0][0]==="number")) g.forEach(ring=>rings.push(join(ring)));
+    else if(type==="LineString") rings.push(join(g));
+    else if(type==="MultiLineString") g.forEach(line=>rings.push(join(line)));
+    else if(g[0] && g[0][0] && typeof g[0][0][0]==="number") g.forEach(poly=>poly.forEach(ring=>rings.push(join(ring))));
+  };
+  geoms.forEach(g=>{ if(g.arcs) walk(g.arcs, g.type); });
+  if(!geoms.length && topo.objects[obj] && topo.objects[obj].arcs) walk(topo.objects[obj].arcs, topo.objects[obj].type);
+  return indexRings(rings.filter(r=>r.length>3));
+}
+function gjRings(gj){
+  const feats=gj.features||(gj.type==="Feature"?[gj]:[]);
+  const out=[];
+  const push=coords=>{
+    if(!coords||!coords.length) return;
+    if(typeof coords[0][0]==="number") out.push({ring:coords});
+    else coords.forEach(push);
+  };
+  feats.forEach(f=>{
+    const name=(f.properties&&(f.properties.shapeName||f.properties.NAME||f.properties.name||f.properties.NAME_1||f.properties.NAME_2))||"";
+    const start=out.length;
+    if(f.geometry) push(f.geometry.coordinates);
+    for(let i=start;i<out.length;i++) out[i].name=name;
+  });
+  return indexRings(out);
+}
+function ringCentroid(ring){
+  let x=0,y=0,n=ring.length||1;
+  for(let i=0;i<ring.length;i++){ x+=ring[i][0]; y+=ring[i][1]; }
+  return [x/n,y/n];
+}
+function addPlace(n,la,lo,iso,k,pop){
+  if(!n||la==null||lo==null) return;
+  PLACES.push({n,la:+la,lo:+lo,iso:iso||"",k:k||"city",pop:pop||0});
+}
+async function fetchJson(url){
+  const r=await fetch(url); if(!r.ok) throw new Error(url);
+  return r.json();
+}
+async function loadAtlas(m){
+  if(LOD[m].land && LOD[m].land!==COASTS) return;
+  const land=await fetchJson(GEO_CDN+"land-"+m+"m.json");
+  const ctry=await fetchJson(GEO_CDN+"countries-"+m+"m.json");
+  LOD[m].land=topoRings(land,"land");
+  LOD[m].borders=topoRings(ctry,"countries");
+  bakeLod(m);
+  earthKey="";
+}
+function ingestPlaces(gj, fallbackK){
+  (gj.features||[]).forEach(f=>{
+    const p=f.properties||{}, g=f.geometry;
+    if(!g||g.type!=="Point") return;
+    const [lo,la]=g.coordinates, name=p.NAME||p.name||p.NAMEASCII;
+    const feat=(p.FEATURECLA||p.featurecla||"").toLowerCase();
+    let k=fallbackK||"city";
+    if(feat.includes("admin-0 capital")) k="un";
+    else if(feat.includes("admin-1")) k="prov";
+    const iso=p.ISO_A3||p.iso_a3||p.ADM0_A3||"";
+    if(iso==="GBR" && la<-51 && la>-53 && lo>-62 && lo<-57) addPlace("Islas Malvinas",la,lo,"ARG","oea",p.POP_MAX||0);
+    else addPlace(name,la,lo,iso, OAS_ISO.includes(iso)&&k==="un"?"oea":k, p.POP_MAX||p.pop_max||0);
+  });
+}
+async function loadCapitals(){
+  if(PLACES.some(p=>p.k==="un")) return;
+  const rows=await fetchJson("https://restcountries.com/v3.1/all?fields=unMember,capital,capitalInfo,cca3,name,region,population,latlng,translations");
+  rows.forEach(c=>{
+    if(!c.unMember) return;
+    const iso=c.cca3, oea=OAS_ISO.includes(iso);
+    const country=(c.translations&&c.translations.spa&&c.translations.spa.common)||(c.name&&c.name.common)||iso;
+    const cll=c.latlng||(c.capitalInfo&&c.capitalInfo.latlng);
+    if(cll) addPlace(country, cll[0], cll[1], iso, "ctry", c.population||0);
+    if(c.capitalInfo && c.capitalInfo.latlng){
+      const [la,lo]=c.capitalInfo.latlng;
+      const cap=(c.capital&&c.capital[0])||country;
+      addPlace(cap,la,lo,iso, oea?"oea":"un", c.population||0);
+    }
+  });
+  addPlace("Islas Malvinas",-51.7,-59.0,"ARG","oea",0);
+  addPlace("La Plata",-34.921,-57.954,"ARG","prov",0);
+  addPlace("Córdoba",-31.42,-64.18,"ARG","prov",0);
+  addPlace("Mendoza",-32.89,-68.85,"ARG","prov",0);
+  addPlace("Salta",-24.79,-65.41,"ARG","prov",0);
+  addPlace("Neuquén",-38.95,-68.06,"ARG","prov",0);
+  addPlace("Ushuaia",-54.8,-68.3,"ARG","prov",0);
+  addPlace("Rawson",-43.3,-65.1,"ARG","prov",0);
+  addPlace("Viedma",-40.81,-63.0,"ARG","prov",0);
+  addPlace("Santa Fe",-31.63,-60.7,"ARG","prov",0);
+  addPlace("Paraná",-31.73,-60.53,"ARG","prov",0);
+  addPlace("Corrientes",-27.47,-58.83,"ARG","prov",0);
+  addPlace("Posadas",-27.37,-55.9,"ARG","prov",0);
+  addPlace("Resistencia",-27.45,-58.99,"ARG","prov",0);
+  addPlace("Formosa",-26.18,-58.17,"ARG","prov",0);
+  addPlace("San Salvador de Jujuy",-24.19,-65.3,"ARG","prov",0);
+  addPlace("San Miguel de Tucumán",-26.83,-65.22,"ARG","prov",0);
+  addPlace("Catamarca",-28.47,-65.79,"ARG","prov",0);
+  addPlace("La Rioja",-29.41,-66.86,"ARG","prov",0);
+  addPlace("San Juan",-31.54,-68.54,"ARG","prov",0);
+  addPlace("San Luis",-33.3,-66.34,"ARG","prov",0);
+  addPlace("Santiago del Estero",-27.78,-64.26,"ARG","prov",0);
+  addPlace("Santa Rosa",-36.62,-64.29,"ARG","prov",0);
+  earthKey="";
+}
+async function loadAdm(iso, level){
+  const key=iso+"-"+level;
+  if(!iso || ADM[key] || ADM["_"+key]) return;
+  ADM["_"+key]=1;
+  try{
+    let gj=null;
+    try{
+      const meta=await fetchJson("https://www.geoboundaries.org/api/current/gbOpen/"+iso+"/"+level+"/");
+      const url=meta.simplifiedGeometryGeoJSON||meta.gjDownloadURL;
+      gj=await fetchJson(url);
+    }catch(e){
+      const u="https://cdn.jsdelivr.net/gh/wmgeolab/geoBoundaries@main/releaseData/gbOpen/"+iso+"/"+level+"/geoBoundaries-"+iso+"-"+level+"-simplified.geojson";
+      gj=await fetchJson(u);
+    }
+    ADM[key]=gjRings(gj);
+    earthKey="";
+  }catch(e){ ADM[key]=[]; }
+}
+function focusLL(){
+  const k=G.rx.toFixed(4)+","+G.ry.toFixed(4);
+  if(G._fk===k && G._f) return G._f;
+  const cy=Math.cos(-G.ry), sy=Math.sin(-G.ry), cx=Math.cos(-G.rx), sx=Math.sin(-G.rx);
+  const y1=sx, z1=cx;
+  const x=z1*sy, z=z1*cy, y=y1;
+  G._fk=k;
+  return G._f={lat:Math.asin(Math.max(-1,Math.min(1,y)))*180/Math.PI, lon:Math.atan2(z,x)*180/Math.PI};
+}
+function lookAt(lat,lon){
+  G.auto=false;
+  for(let i=0;i<48;i++){
+    const p=project(lat,lon);
+    if(!p){ G.ry+=0.28; continue; }
+    const w=glCanvas.clientWidth, h=glCanvas.clientHeight, R=globeR()||1;
+    const dx=p.x-w/2, dy=p.y-h*0.52;
+    if(dx*dx+dy*dy<9) break;
+    G.ry-=dx/R;
+    G.rx=Math.max(-1.45, Math.min(1.45, G.rx+dy/R));
+  }
+  earthKey="";
+}
+function pickLL(px,py){
+  if(!glCanvas) return null;
+  const w=glCanvas.clientWidth, h=glCanvas.clientHeight, R=globeR();
+  const vx=-(px-w/2)/R, vy=-(py-h*0.52)/R, rr=vx*vx+vy*vy;
+  if(rr>1) return null;
+  const vz=Math.sqrt(1-rr);
+  const cx=Math.cos(-G.rx), sxr=Math.sin(-G.rx), cy=Math.cos(-G.ry), sy=Math.sin(-G.ry);
+  const y1=vy*cx+vz*sxr, z1=-vy*sxr+vz*cx, x1=vx;
+  const x=x1*cy+z1*sy, z=-x1*sy+z1*cy, y=y1;
+  return {lat:Math.asin(Math.max(-1,Math.min(1,y)))*180/Math.PI, lon:Math.atan2(z,x)*180/Math.PI};
+}
+function nearestIso(){
+  const f=focusLL();
+  if(f.lat<-50 && f.lat>-53.5 && f.lon>-62 && f.lon<-57) return "ARG";
+  let best="ARG", bd=1e9;
+  for(let i=0;i<PLACES.length;i++){
+    const p=PLACES[i]; if(p.k!=="ctry" && p.k!=="un" && p.k!=="oea") continue;
+    const d=(p.la-f.lat)*(p.la-f.lat)+(p.lo-f.lon)*(p.lo-f.lon);
+    if(d<bd){ bd=d; best=p.iso||best; }
+  }
+  return best;
+}
+function needGeo(){
+  const lod=lodLevel(); GEO.lod=lod;
+  if(lod<=50 && !(LOD[50].land&&LOD[50].land.length>10) && !LOD._f50){ LOD._f50=1; loadAtlas(50).catch(()=>{}); }
+  if(lod<=10 && !(LOD[10].land&&LOD[10].land.length>10) && !LOD._f10){ LOD._f10=1; loadAtlas(10).catch(()=>{}); }
+  if(G.dist<0.28 && !LOD._p50){
+    LOD._p50=1;
+    fetchJson(NE_CDN+"ne_50m_populated_places.geojson").then(g=>ingestPlaces(g,"city")).then(()=>{earthKey="";}).catch(()=>{});
+  }
+  if(G.dist<0.16 && !LOD._p10){
+    LOD._p10=1;
+    fetchJson(NE_CDN+"ne_10m_populated_places_simple.geojson").then(g=>ingestPlaces(g,"city")).then(()=>{earthKey="";}).catch(()=>{});
+  }
+  if(G.dist<0.28 && !LOD.a1){
+    LOD.a1=1;
+    fetchJson(NE_CDN+"ne_50m_admin_1_states_provinces_lines.geojson").then(g=>{ LOD.admin1=gjRings(g); earthKey=""; }).catch(()=>{});
+  }
+  GEO.focusIso=nearestIso();
+  if(G.dist<0.24) loadAdm(GEO.focusIso,"ADM1");
+  if(G.dist<0.12) loadAdm(GEO.focusIso,"ADM2");
+  const bits=["ONU/OEA"];
+  bits.push("NE "+lod+"m");
+  if(G.dist<0.42) bits.push("países");
+  if(G.dist<0.24) bits.push("ADM1 "+GEO.focusIso);
+  if(G.dist<0.12) bits.push("ADM2");
+  GEO.note=bits.join(" · ");
+  const hud=$("#geohud"); if(hud) hud.innerHTML=`<b>${GEO.note}</b>`;
+}
+function bootGeo(){
+  LOD._f50=1;
+  loadCapitals().then(()=>{ earthKey=""; needGeo(); }).catch(()=>{ needGeo(); });
+  loadAtlas(50).catch(()=>{ LOD._f50=0; });
+}
+
+function great(a,b,n=64,alt=0.12){
+  const A=latlon(a.lat,a.lon), B=latlon(b.lat,b.lon);
+  const d=A[0]*B[0]+A[1]*B[1]+A[2]*B[2], om=Math.acos(Math.min(1,Math.max(-1,d)));
+  const pts=[];
+  for(let i=0;i<=n;i++){
+    const t=i/n, s=Math.sin(om)||1, k=Math.sin((1-t)*om)/s, j=Math.sin(t*om)/s;
+    const x=A[0]*k+B[0]*j, y=A[1]*k+B[1]*j, z=A[2]*k+B[2]*j;
+    const lift=1+alt*Math.sin(Math.PI*t);
+    pts.push(x*lift,y*lift,z*lift);
+  }
+  return pts;
+}
+function nodeBy(id){ return NODES.find(n=>n.id===id); }
+
+function buildArcs(){
+  const fl=flows.find(f=>f.id===S.flow) || flows[0];
+  const pairs=[["ba","la"],["ba","mia"],["mia","lon"],["ba","sp"]];
+  if(fl.bad) pairs.push(["ba","nl"]);
+  arcs=pairs.map(([a,b])=>{
+    const A=nodeBy(a), B=nodeBy(b);
+    const col = (a==="ba"&&b==="nl") ? "#ff596a" : (b==="sat"?"#5ce5e1":"#6ec1ff");
+    return {pts:great(A,B,56, b==="sat"?0.28:0.16), col, dashed:(a==="mia"&&b==="lon"), sel:fl.path.includes(a)&&fl.path.includes(b)};
+  });
+}
+
+function resizeGL(){
+  if(!glCanvas) return;
+  const dpr=Math.min(devicePixelRatio||1, 2);
+  const r=glCanvas.parentElement.getBoundingClientRect();
+  const w=Math.max(1,r.width*dpr), h=Math.max(1,r.height*dpr);
+  if(glCanvas.width!==w || glCanvas.height!==h){ glCanvas.width=w; glCanvas.height=h; earthKey=""; if(earthSnap) earthSnap.ok=false; }
+  ctx2d=glCanvas.getContext("2d");
+}
+
+function projectXYZ(x,y,z,mode){
+  if(!glCanvas) return null;
+  const M=rotCached();
+  const X=M[0]*x+M[4]*y+M[8]*z, Y=M[1]*x+M[5]*y+M[9]*z, Z=M[2]*x+M[6]*y+M[10]*z;
+  const w=glCanvas.clientWidth, h=glCanvas.clientHeight;
+  const R=globeR();
+  if(mode==="orbit"){
+    const rad2=X*X+Y*Y;
+    if(Z<0 && rad2<0.97) return null;
+    return {x:w/2-X*R, y:h*0.52-Y*R, z:Z};
+  }
+  if(mode==="path"){
+    if(Z<-0.12) return null;
+    if(Z<0.05){
+      const hy=Math.hypot(X,Y)||1e-6;
+      const s=Math.sqrt(0.9975)/hy;
+      return {x:w/2-X*s*R, y:h*0.52-Y*s*R, z:Z, limb:true};
+    }
+    return {x:w/2-X*R, y:h*0.52-Y*R, z:Z};
+  }
+  if(Z<0.02) return null;
+  return {x:w/2-X*R, y:h*0.52-Y*R, z:Z};
+}
+function project(lat,lon,alt=1,mode){ const p=latlon(lat,lon,alt); return projectXYZ(p[0],p[1],p[2],mode); }
+
+function satState(s, t){
+  const nu=s.phase + t*s.w;
+  const cu=Math.cos(nu), su=Math.sin(nu);
+  const ci=Math.cos(s.inc), si=Math.sin(s.inc);
+  const cr=Math.cos(s.raan), sr=Math.sin(s.raan);
+  const x0=s.r*cu, y0=s.r*su*ci, z0=s.r*su*si;
+  const x=x0*cr-z0*sr, z=x0*sr+z0*cr, y=y0;
+  const n=Math.hypot(x,y,z)||1;
+  return {x,y,z, lat:Math.asin(Math.max(-1,Math.min(1,y/n)))*180/Math.PI, lon:Math.atan2(z,x)*180/Math.PI};
+}
+
+function orbitRing(s, n=96){
+  const pts=[];
+  for(let i=0;i<=n;i++){
+    const st=satState({r:s.r, inc:s.inc, raan:s.raan, w:0, phase:i/n*Math.PI*2}, 0);
+    pts.push(st.x, st.y, st.z);
+  }
+  return pts;
+}
+
+function drawElbow(ctx, p, col, t, flip){
+  if(!p) return;
+  if(((t/110)|0)%2) return;
+  const s=10, sx=flip?-s:s;
+  ctx.save();
+  ctx.strokeStyle=col; ctx.lineWidth=1.55; ctx.shadowColor=col; ctx.shadowBlur=10;
+  ctx.setLineDash([3,4]);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y-s);
+  ctx.lineTo(p.x, p.y);
+  ctx.lineTo(p.x+sx, p.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.shadowBlur=0;
+  ctx.restore();
+}
+
+function syncSats(t){
+  SATS.forEach(s=>{
+    const st=satState(s,t);
+    const n=nodeBy(s.id);
+    if(n){ n.lat=st.lat; n.lon=st.lon; n.alt=s.r; }
+  });
+}
+
+function lerpLL(a,b,t){
+  const A=latlon(a[1],a[0]), B=latlon(b[1],b[0]);
+  const d=Math.min(1,Math.max(-1,A[0]*B[0]+A[1]*B[1]+A[2]*B[2]));
+  const om=Math.acos(d); if(om<1e-4) return a;
+  const s=Math.sin(om), k=Math.sin((1-t)*om)/s, j=Math.sin(t*om)/s;
+  const x=A[0]*k+B[0]*j, y=A[1]*k+B[1]*j, z=A[2]*k+B[2]*j;
+  return [Math.atan2(z,x)*180/Math.PI, Math.asin(Math.max(-1,Math.min(1,y)))*180/Math.PI];
+}
+
+function ringOnScreen(ring){
+  ring = ring.ring || ring;
+  if(G.dist>1.4) return true;
+  const bb=ring._bb;
+  if(!bb) return true;
+  const f=focusLL();
+  const half=Math.max(18, (Math.max(glCanvas.clientWidth, glCanvas.clientHeight)/Math.max(12,globeR()))*140);
+  const dlat=Math.max(0, bb[1]-f.lat, f.lat-bb[3]);
+  let dlon=0;
+  if(f.lon<bb[0] || f.lon>bb[2]){
+    const a=Math.abs(f.lon-bb[0]), b=Math.abs(f.lon-bb[2]);
+    dlon=Math.min(a,b, Math.abs(360-a), Math.abs(360-b));
+  }
+  return !(dlat>half && dlon>half);
+}
+
+function pathRing(ctx, ring, close, maxStep){
+  ring = ring.ring || ring;
+  const n=ring.length; if(n<2) return 0;
+  if(!ringOnScreen(ring)) return 0;
+  let pen=false, vis=0;
+  const densify = G.dist>0.9 && !previewing();
+  const step=maxStep || (densify ? Math.max(0.2, 3.2*Math.min(1,G.dist/2.2)) : 1e9);
+  ctx.beginPath();
+  const last=close?n:n-1;
+  for(let i=0;i<last;i++){
+    const a=ring[i], b=ring[(i+1)%n];
+    const steps=densify?Math.max(1, Math.ceil(Math.hypot(a[0]-b[0], a[1]-b[1])/step)):1;
+    for(let k=0;k<steps;k++){
+      const ll=k?lerpLL(a,b,k/steps):a;
+      const p=project(ll[1], ll[0], 1, "path");
+      if(!p){ pen=false; continue; }
+      vis++;
+      if(!pen){ ctx.moveTo(p.x,p.y); pen=true; } else ctx.lineTo(p.x,p.y);
+    }
+  }
+  return vis;
+}
+
+function meridian(lon, step){
+  const r=[], s=step||3; for(let la=-78;la<=78;la+=s) r.push([lon,la]); return r;
+}
+function parallel(lat, step){
+  const r=[], s=step||4; for(let lo=-180;lo<=180;lo+=s) r.push([lo,lat]); return r;
+}
+
+function paintEarth(){
+  const w=glCanvas.width, h=glCanvas.height;
+  const cssW=glCanvas.clientWidth, cssH=glCanvas.clientHeight;
+  const dpr=w/Math.max(1,cssW);
+  const R=globeR();
+  const cx=cssW/2, cy=cssH*0.52;
+  const fast=previewing();
+  const lod=lodPaint();
+  const land=(LOD[lod].land&&LOD[lod].land.length)?LOD[lod].land:(LOD[50].land||COASTS||[]);
+  const borders=(LOD[lod].borders&&LOD[lod].borders.length)?LOD[lod].borders:(LOD[50].borders||BORDERS||[]);
+  if(!earthLayer){ earthLayer=document.createElement("canvas"); earthCtx=earthLayer.getContext("2d"); }
+  if(earthLayer.width!==w || earthLayer.height!==h){ earthLayer.width=w; earthLayer.height=h; }
+  const c=earthCtx;
+  c.setTransform(1,0,0,1,0,0);
+  c.fillStyle="#02060c"; c.fillRect(0,0,w,h);
+  c.save(); c.scale(dpr,dpr);
+
+  const zoomed=R>Math.max(cssW,cssH)*0.92;
+
+  if(!zoomed){
+    const halo=c.createRadialGradient(cx,cy,Math.max(8,R*0.82),cx,cy,R*1.28);
+    halo.addColorStop(0,"rgba(40,110,220,0)");
+    halo.addColorStop(0.62,"rgba(60,140,255,.10)");
+    halo.addColorStop(1,"rgba(8,20,40,0)");
+    c.fillStyle=halo; c.beginPath(); c.arc(cx,cy,R*1.28,0,7); c.fill();
+  }
+
+  c.save();
+  if(!zoomed){
+    c.beginPath(); c.arc(cx,cy,Math.max(1,R),0,7); c.clip();
+  }
+  if(zoomed){
+    c.fillStyle="#0a1c32";
+    c.fillRect(0,0,cssW,cssH);
+  } else {
+    const body=c.createRadialGradient(cx-R*0.32, cy-R*0.38, Math.max(2,R*0.08), cx+R*0.1, cy+R*0.15, R*1.08);
+    body.addColorStop(0,"#1c4d7a");
+    body.addColorStop(0.22,"#102a48");
+    body.addColorStop(0.55,"#0a1c32");
+    body.addColorStop(0.82,"#061018");
+    body.addColorStop(1,"#03080e");
+    c.fillStyle=body; c.beginPath(); c.arc(cx,cy,Math.max(1,R),0,7); c.fill();
+  }
+
+  c.lineJoin="round"; c.lineCap="round";
+  if(!zoomed && G.dist>0.85){
+    const gStep = fast?15:G.dist>1.6?15:5;
+    const gFine = fast?4:3;
+    for(let lo=-180;lo<180;lo+=gStep){
+      const major=Math.abs(lo)%(gStep*2)<1e-6, rib=Math.abs(lo)%90<1e-6;
+      c.strokeStyle=rib?"rgba(196,165,116,.28)":major?"rgba(120,180,255,.22)":"rgba(80,150,220,.10)";
+      c.lineWidth=rib?1.05:major?0.7:0.4;
+      pathRing(c, meridian(lo, gFine), false); c.stroke();
+    }
+    for(let la=-75;la<=75;la+=gStep){
+      const eq=Math.abs(la)<1e-6, major=Math.abs(la)%(gStep*2)<1e-6;
+      c.strokeStyle=eq?"rgba(196,165,116,.38)":major?"rgba(120,180,255,.20)":"rgba(80,150,220,.09)";
+      c.lineWidth=eq?1.15:major?0.7:0.4;
+      pathRing(c, parallel(la, gFine), false); c.stroke();
+    }
+  }
+
+  if(layerOn["Geography"]!==false){
+    const pack=LOD[lod]||LOD[110];
+    const landMesh=pack.meshLand||(LOD[50]&&LOD[50].meshLand)||(LOD[110]&&LOD[110].meshLand);
+    const borderMesh=pack.meshBorders||(LOD[50]&&LOD[50].meshBorders)||(LOD[110]&&LOD[110].meshBorders);
+    c.lineCap="round"; c.lineJoin="round";
+    if(!fast && !zoomed && landMesh){
+      c.fillStyle="rgba(64,130,150,.14)";
+      c.strokeStyle="rgba(0,0,0,0)";
+      strokeMesh(c, landMesh, true);
+      c.fill("evenodd");
+    }
+    if(!fast && borderMesh){
+      c.strokeStyle="rgba(140,190,220,.28)"; c.lineWidth=G.dist<0.8?0.8:0.55;
+      strokeMesh(c, borderMesh, true);
+    }
+    if(!fast && G.dist<0.28 && LOD.admin1){
+      c.strokeStyle="rgba(196,165,116,.32)"; c.lineWidth=0.7;
+      LOD.admin1.forEach(ring=>{ pathRing(c, ring, false); c.stroke(); });
+    }
+    const a1=ADM[GEO.focusIso+"-ADM1"];
+    if(!fast && G.dist<0.24 && a1){
+      c.strokeStyle="rgba(196,165,116,.55)"; c.lineWidth=1.05;
+      a1.forEach(ring=>{ pathRing(c, ring, true); c.stroke(); });
+    }
+    const a2=ADM[GEO.focusIso+"-ADM2"];
+    if(!fast && G.dist<0.12 && a2){
+      c.strokeStyle="rgba(120,180,255,.4)"; c.lineWidth=0.65;
+      a2.forEach(ring=>{ pathRing(c, ring, true); c.stroke(); });
+    }
+    c.strokeStyle="#9fd4ff"; c.lineWidth=fast?1:G.dist<0.5?1.2:1.05;
+    if(landMesh) strokeMesh(c, landMesh, true);
+    if(!G.dragging && (!fast || G.dist>0.4)) drawPlaces(c, cssW, cssH);
+  }
+  c.restore();
+
+  if(!zoomed){
+    c.strokeStyle="rgba(160,210,255,.55)"; c.lineWidth=1.4;
+    c.beginPath(); c.arc(cx,cy,R,0,7); c.stroke();
+    c.strokeStyle="rgba(90,160,255,.16)"; c.lineWidth=7;
+    c.beginPath(); c.arc(cx,cy,R+1.5,0,7); c.stroke();
+    c.strokeStyle="rgba(196,165,116,.22)"; c.lineWidth=0.6;
+    c.beginPath(); c.arc(cx,cy,R+6,0,7); c.stroke();
+    for(let i=0;i<12;i++){
+      const a=i*Math.PI/6, inner=R+4, outer=R+10;
+      c.strokeStyle=i%3===0?"rgba(196,165,116,.4)":"rgba(120,180,255,.2)";
+      c.lineWidth=i%3===0?1:0.5;
+      c.beginPath();
+      c.moveTo(cx+Math.cos(a)*inner, cy+Math.sin(a)*inner);
+      c.lineTo(cx+Math.cos(a)*outer, cy+Math.sin(a)*outer);
+      c.stroke();
+    }
+  }
+  c.restore();
+}
+
+function placeMin(){
+  if(G.dist>2.05) return {pop:4.8e7, k:["ctry"]};
+  if(G.dist>1.2) return {pop:1.2e7, k:["ctry"]};
+  if(G.dist>0.38) return {pop:0, k:["ctry"]};
+  if(G.dist>0.22) return {pop:0, k:["ctry","un","oea"]};
+  if(G.dist>0.12) return {pop:0, k:["ctry","un","oea","prov"]};
+  return {pop:2e4, k:["un","oea","prov","city","mun"]};
+}
+function drawPlaces(c, w, h){
+  const rule=placeMin();
+  const taken=[];
+  const ok=(x,y,s)=>{
+    for(let i=0;i<taken.length;i++){ if(Math.hypot(taken[i][0]-x,taken[i][1]-y)<s) return false; }
+    taken.push([x,y]); return true;
+  };
+  const list=PLACES;
+  c.textAlign="center"; c.textBaseline="bottom";
+  for(let pass=0; pass<2; pass++){
+    for(let i=0;i<list.length;i++){
+      const p=list[i];
+      const isCtry=p.k==="ctry";
+      if(pass===0 && !isCtry) continue;
+      if(pass===1 && isCtry) continue;
+      if(rule.k && rule.k.indexOf(p.k)<0) continue;
+      if(isCtry && p.pop<rule.pop) continue;
+      if(p.k==="city" && p.pop<rule.pop) continue;
+      const q=project(p.la,p.lo); if(!q) continue;
+      if(q.x<8||q.x>w-8||q.y<10||q.y>h-8) continue;
+      const cap=p.k==="un"||p.k==="oea";
+      const gap=isCtry?28:cap?18:p.k==="prov"?16:12;
+      if(!ok(q.x,q.y,gap)) continue;
+      if(isCtry){
+        c.fillStyle="rgba(196,165,116,.95)";
+        c.font=(G.dist>1.5?12:G.dist>0.7?11:10)+"px Segoe UI,sans-serif";
+        c.strokeStyle="rgba(2,6,12,.8)"; c.lineWidth=3.5;
+        c.strokeText(p.n, q.x, q.y);
+        c.fillText(p.n, q.x, q.y);
+        continue;
+      }
+      c.fillStyle=cap?"#e7f1ff":p.k==="prov"?"#c4a574":"rgba(210,235,255,.9)";
+      c.beginPath(); c.arc(q.x,q.y, cap?2.2:p.k==="prov"?1.6:1.15,0,7); c.fill();
+      c.font=(cap?11:p.k==="prov"?10:9)+"px Segoe UI,sans-serif";
+      c.strokeStyle="rgba(2,6,12,.75)"; c.lineWidth=3;
+      c.strokeText(p.n, q.x, q.y-5);
+      c.fillText(p.n, q.x, q.y-5);
+    }
+  }
+  if(G.dist<0.22){
+    const adm=ADM[GEO.focusIso+(G.dist<0.12?"-ADM2":"-ADM1")]||[];
+    c.font="9px Segoe UI,sans-serif"; c.fillStyle="rgba(196,165,116,.95)";
+    adm.forEach(item=>{
+      const ring=item.ring||item; if(!ring||!item.name) return;
+      const cc=ringCentroid(ring);
+      const q=project(cc[1], cc[0]); if(!q) return;
+      if(q.x<8||q.x>w-8||q.y<10||q.y>h-8) return;
+      if(!ok(q.x,q.y,14)) return;
+      c.strokeStyle="rgba(2,6,12,.7)"; c.lineWidth=3;
+      c.strokeText(item.name, q.x, q.y);
+      c.fillText(item.name, q.x, q.y);
+    });
+  }
+}
+
+function strokeXYZ(ctx, pts, mode){
+  ctx.beginPath();
+  let pen=false, n=pts.length/3, vis=0;
+  for(let i=0;i<n;i++){
+    const p=projectXYZ(pts[i*3], pts[i*3+1], pts[i*3+2], mode);
+    if(!p){ pen=false; continue; }
+    vis++;
+    if(!pen){ ctx.moveTo(p.x,p.y); pen=true; } else ctx.lineTo(p.x,p.y);
+  }
+  return vis;
+}
+
+function drawGlobe(t){
+  if(!glCanvas||!ctx2d) return;
+  const dt=Math.min(48, t-(G.lastT||t));
+  G.lastT=t;
+  if(!G.dragging && !reduced){
+    const spd=Math.abs(G.vry)+Math.abs(G.vrx);
+    if(spd>2e-6){
+      G.ry+=G.vry*dt;
+      G.rx=Math.max(-1.45, Math.min(1.45, G.rx+G.vrx*dt));
+      const decay=Math.exp(-dt/980);
+      G.vry*=decay; G.vrx*=decay;
+      if(Math.abs(G.vry)+Math.abs(G.vrx)<2e-6){ G.vry=0; G.vrx=0; earthKey=""; }
+    } else if(G.auto && G.dist>2.15) G.ry += 0.00045;
+  }
+  const w=glCanvas.width, h=glCanvas.height;
+  const cssW=glCanvas.clientWidth, cssH=glCanvas.clientHeight;
+  const dpr=w/Math.max(1,cssW);
+  const fast=previewing();
+  const zoomBlit=earthSnap&&earthSnap.ok
+    && earthSnap.width===w && earthSnap.height===h
+    && Math.abs(earthSnap.rx-G.rx)<1e-6 && Math.abs(earthSnap.ry-G.ry)<1e-6
+    && G.dist<=earthSnap.dist*1.02 && G.dist>=earthSnap.dist*0.78;
+  ctx2d.setTransform(1,0,0,1,0,0);
+  if(zoomBlit){
+    blitSnap(ctx2d, w, h);
+  } else {
+    if(fast){
+      try{ paintEarth(); earthKey=""; }catch(err){ console.error(err); }
+    } else {
+      const q=G.dist<0.4?3:2;
+      const key=[w,h,G.rx.toFixed(q),G.ry.toFixed(q),G.dist.toFixed(G.dist<0.5?3:2),lodPaint()].join("|");
+      if(key!==earthKey){
+        try{ paintEarth(); earthKey=key; captureSnap(); }catch(err){ console.error(err); earthKey=""; }
+      }
+    }
+    if(!earthLayer) return;
+    ctx2d.drawImage(earthLayer,0,0);
+  }
+  ctx2d.save(); ctx2d.scale(dpr,dpr);
+
+  syncSats(t);
+  ctx2d.lineCap="round"; ctx2d.lineJoin="round";
+
+  if(layerOn["Satellites"]){
+    SATS.forEach(s=>{
+      if(!fast){
+        ctx2d.strokeStyle=s.color+"55"; ctx2d.lineWidth=0.85; ctx2d.shadowBlur=0;
+        strokeXYZ(ctx2d, s._ring || (s._ring=orbitRing(s, 72)), "orbit");
+        ctx2d.stroke();
+      }
+      const st=satState(s,t);
+      const p=projectXYZ(st.x,st.y,st.z,"orbit"); if(!p) return;
+      ctx2d.fillStyle=s.color; ctx2d.shadowColor=s.color; ctx2d.shadowBlur=12;
+      ctx2d.beginPath(); ctx2d.arc(p.x,p.y,3.4,0,7); ctx2d.fill();
+      ctx2d.strokeStyle="#e7f6ff"; ctx2d.lineWidth=1.1; ctx2d.shadowBlur=0;
+      ctx2d.beginPath();
+      ctx2d.moveTo(p.x-5,p.y); ctx2d.lineTo(p.x+5,p.y);
+      ctx2d.moveTo(p.x,p.y-5); ctx2d.lineTo(p.x,p.y+5);
+      ctx2d.stroke();
+      if(s.id!=="sat") return;
+      const gnd=nodeBy("mia")||nodeBy("ba");
+      if(!gnd) return;
+      const g=latlon(gnd.lat,gnd.lon,1.02);
+      const beam=[];
+      for(let i=0;i<=20;i++){
+        const u=i/20;
+        beam.push(g[0]+(st.x-g[0])*u, g[1]+(st.y-g[1])*u, g[2]+(st.z-g[2])*u);
+      }
+      ctx2d.strokeStyle=s.color+"aa"; ctx2d.lineWidth=1.15;
+      ctx2d.setLineDash([4,5]);
+      strokeXYZ(ctx2d, beam, "orbit"); ctx2d.stroke(); ctx2d.setLineDash([]);
+      const u=((t*0.00035)%1);
+      const bi=Math.floor(u*20)*3;
+      const bp=projectXYZ(beam[bi],beam[bi+1],beam[bi+2],"orbit");
+      if(bp){ ctx2d.fillStyle="#e7f6ff"; ctx2d.beginPath(); ctx2d.arc(bp.x,bp.y,2.2,0,7); ctx2d.fill(); }
+      if(u<0.14) drawElbow(ctx2d, project(gnd.lat,gnd.lon,1.02), s.color, t, false);
+      if(u>0.86) drawElbow(ctx2d, p, s.color, t, true);
+    });
+  }
+
+  arcs.forEach(a=>{
+    ctx2d.strokeStyle=a.sel?a.col:a.col+"cc";
+    ctx2d.shadowColor=a.col; ctx2d.shadowBlur=fast?0:12;
+    ctx2d.setLineDash(a.dashed?[5,6]:[]);
+    ctx2d.lineWidth=a.sel?2.3:1.45;
+    strokeXYZ(ctx2d, a.pts, "path"); ctx2d.stroke(); ctx2d.setLineDash([]);
+    const n=a.pts.length/3;
+    if(!reduced){
+      ctx2d.shadowBlur=0;
+      for(let k=0;k<5;k++){
+        const u=((t*0.00018*(1+k*0.07)+k/5)%1);
+        const i=Math.floor(u*(n-1))*3;
+        const p=projectXYZ(a.pts[i],a.pts[i+1],a.pts[i+2]); if(!p) continue;
+        ctx2d.fillStyle="#e7f6ff"; ctx2d.beginPath(); ctx2d.arc(p.x,p.y,2.1,0,7); ctx2d.fill();
+        if(u<0.12){
+          const tx=projectXYZ(a.pts[0],a.pts[1],a.pts[2]);
+          drawElbow(ctx2d, tx, a.col, t, false);
+        }
+        if(u>0.88){
+          const last=(n-1)*3;
+          const rx=projectXYZ(a.pts[last],a.pts[last+1],a.pts[last+2]);
+          drawElbow(ctx2d, rx, a.col, t, true);
+        }
+      }
+    }
+  });
+  ctx2d.restore();
+  if(t-lastLbl>(fast?240:90)){ lastLbl=t; drawLabels(); }
+}
+
+function bindGlobe(canvas){
+  if(!canvas) return;
+  glCanvas=canvas;
+  resizeGL();
+  loadGeo();
+  if(!arcs.length) buildArcs();
+  bootGeo();
+  canvas.onpointerdown=e=>{
+    G.dragging=true; G.auto=false; G.preview=true; lockLod();
+    G.vry=0; G.vrx=0;
+    G.lx=e.clientX; G.ly=e.clientY; G.lt=performance.now();
+    canvas.setPointerCapture(e.pointerId);
+  };
+  canvas.onpointermove=e=>{
+    if(!G.dragging) return;
+    const now=performance.now();
+    const dt=Math.max(8, now-(G.lt||now));
+    const R=Math.max(48, globeR());
+    const dx=e.clientX-G.lx, dy=e.clientY-G.ly;
+    const dry=-dx/R, drx=-dy/R;
+    G.ry+=dry;
+    G.rx=Math.max(-1.45, Math.min(1.45, G.rx+drx));
+    G.vry=dry/dt; G.vrx=drx/dt;
+    G.lx=e.clientX; G.ly=e.clientY; G.lt=now;
+  };
+  canvas.onpointerup=()=>{
+    G.dragging=false;
+    if(performance.now()-(G.lt||0)>90){ G.vry=0; G.vrx=0; }
+    G.preview=false;
+    clearTimeout(geoTimer);
+    geoTimer=setTimeout(()=>{ G.preview=false; G.lodLock=0; earthKey=""; needGeo(); }, 200);
+  };
+  canvas.onpointercancel=canvas.onpointerup;
+  canvas.onwheel=e=>{
+    e.preventDefault();
+    setDist(G.dist * Math.exp(e.deltaY*0.00115));
+  };
+  canvas.ondblclick=e=>{
+    e.preventDefault();
+    setDist(G.dist*0.42);
+  };
+}
+
+function drawLabels(){
+  const target = (innerWidth>=900) ? $("#labels") : $(".mglobe .mlabels");
+  if(!target) return;
+  const fl=flows.find(f=>f.id===S.flow);
+  let html="";
+  NODES.forEach(n=>{
+    if(n.kind==="sat" && !layerOn["Satellites"]) return;
+    const p=project(n.lat,n.lon,n.alt||1.02, n.kind==="sat"?"orbit":undefined); if(!p) return;
+    html+=`<div class="nd ${n.kind==="sat"?"sat":""} ${n.kind==="bad"?"bad":""} ${fl&&fl.path.includes(n.id)?"on":""}" style="left:${p.x}px;top:${p.y}px" data-node="${n.id}"></div>
+      <div class="lbl" style="left:${p.x}px;top:${p.y}px"><b>${n.name}</b><s>${n.sub}</s></div>`;
+  });
+  if(layerOn["Satellites"]){
+    SATS.forEach(s=>{
+      if(nodeBy(s.id)) return;
+      const st=satState(s, performance.now());
+      const p=projectXYZ(st.x,st.y,st.z,"orbit"); if(!p) return;
+      html+=`<div class="nd sat" style="left:${p.x}px;top:${p.y}px"></div>
+        <div class="lbl" style="left:${p.x}px;top:${p.y}px"><b>${s.name}</b><s>LEO</s></div>`;
+    });
+  }
+  if(fl){
+    const a=nodeBy(fl.path[0]), b=nodeBy(fl.path[1]||fl.path[0]);
+    if(a&&b){
+      const pa=project(a.lat,a.lon,1.08), pb=project(b.lat,b.lon,1.08);
+      if(pa&&pb) html+=`<div class="rttpill" style="left:${(pa.x+pb.x)/2}px;top:${(pa.y+pb.y)/2}px">${fl.rtt} ms</div>`;
+    }
+  }
+  target.innerHTML=html;
+}
+
+/* ---------- UI ---------- */
+const ICO = {
+  lap:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M2 19h20"/></svg>`,
+  rtr:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="10" width="16" height="8" rx="2"/><path d="M8 10V7m4 3V5m4 5V7"/></svg>`,
+  tow:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M8 8c2-2 6-2 8 0M6 13c3-3 9-3 12 0"/></svg>`,
+  ixp:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>`,
+  bb:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12h16M7 8l-3 4 3 4M17 8l3 4-3 4"/></svg>`,
+  cld:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 18h11a4 4 0 0 0 0-8 6 6 0 0 0-11-2 4 4 0 0 0-1 10z"/></svg>`
+};
+
+function flow(){ return flows.find(f=>f.id===S.flow)||flows[0]; }
+
+function renderInsp(){
+  const f=flow(), d=devices.find(x=>x.id===f.src);
+  const hops=f.hops;
+  const tabs=["Overview","Route","Packets","Threat Intel"];
+  $("#insp").innerHTML=`
+    <div class="insp-h"><h2>Flow #${f.id}</h2><span class="pill"><span class="dot"></span> LIVE</span></div>
+    <div class="itabs">${tabs.map(t=>`<button type="button" data-tab="${t}" class="${S.tab===t?"on":""}">${t}</button>`).join("")}</div>
+    <div class="insp-b">
+      ${S.tab==="Overview"||S.tab==="Route"?`
+      <div class="sd">
+        <div class="ent"><div class="ic">${ICO.lap}</div><div><b>${d?d.name:"Device"}</b><span>${d?d.ip:""}<br>${d?d.net:""}</span></div></div>
+        <span>→</span>
+        <div class="ent"><div class="ic">${ICO.cld}</div><div><b>${f.dstName}</b><span>${f.dstIp}<br>${f.city}</span></div></div>
+      </div>`:""}
+      ${S.tab==="Overview"?`
+      <div class="meta">
+        <div><div class="k">Protocol</div><div class="v">${f.proto}</div></div>
+        <div><div class="k"> </div><div class="v"><span class="enc">${f.enc?"Encrypted":"Cleartext"}</span></div></div>
+        <div><div class="k">Data</div><div class="v"><span class="up">↑ ${f.up} KB</span> <span class="dn">↓ ${f.down} MB</span></div></div>
+        <div><div class="k">Started</div><div class="v" id="started">17:24:31.482</div></div>
+        <div><div class="k">RTT</div><div class="v" style="font-size:22px">${f.rtt} ms</div></div>
+        <div><div class="k">Duration</div><div class="v" id="dur">2 min 14 sec</div></div>
+        <div><div class="k">Status</div><div class="v" style="color:var(--green)">● ${f.status}</div></div>
+        <div><div class="k">Packets</div><div class="v">${f.pkts[0].toLocaleString()} (↑ ${f.pkts[1]} / ↓ ${f.pkts[2]})</div></div>
+        <div><div class="k">Route Confidence</div><div class="v">${f.conf}%</div></div>
+        <div><div class="k">Hops</div><div class="v">12 observed / 3 inferred</div></div>
+      </div>`:""}
+      ${S.tab==="Route"||S.tab==="Overview"?`
+      <div class="routeh"><b>Route</b><button class="view" data-go="map">View on Map</button></div>
+      ${hops.map(h=>`<div class="rrow"><div class="dotl"></div><div><b>${h.name}</b><div style="color:var(--muted);font-size:11px">${h.meta}</div></div><div class="ms">${h.ms}</div></div>`).join("")}
+      `:""}
+      ${S.tab==="Packets"?`<p style="color:var(--muted)">Handshake and records for this flow. Full stream in the deck below.</p>`:""}
+      ${S.tab==="Threat Intel"? (f.bad? `<div class="alert"><div>⚠</div><div><h5>Unknown ASN · first seen</h5><p>No organization mapping. Jurisdiction: NL. Suggested: block until reviewed.</p></div></div>`:`<p style="color:var(--muted)">No threat intel for this destination. Cloudflare / known CDN.</p>`):""}
+    </div>`;
+}
+
+function renderLayers(){
+  $("#layers").innerHTML=`<h4>LAYERS</h4>`+LAYERS.map(l=>`<label><input type="checkbox" data-layer="${l}" ${layerOn[l]?"checked":""}> ${l}</label>`).join("");
+}
+
+function renderDests(){
+  $("#dests").innerHTML=ORGS.map(o=>`<div class="drow"><span class="badge" style="background:${o.color}22;color:${o.color}">${o.name[0]}</span><span style="width:78px">${o.name}</span><div class="bar"><i style="width:${o.pct*2.4}%"></i></div><span style="color:var(--muted)">${o.pct}%</span></div>`).join("");
+}
+
+function renderThreats(){
+  $("#threats").innerHTML=alerts.map(a=>`<div class="alert ${a.sev==="warn"?"warn":a.sev==="info"?"info":""}" data-alert="${a.id}">
+    <div>${a.sev==="critical"?"⚠":a.sev==="warn"?"⚡":"ℹ"}</div>
+    <div><h5>${a.rule}</h5><p>${a.ev||a.body}</p></div><span style="color:var(--muted);font-size:10px">${a.when}</span>
+  </div>`).join("");
+}
+
+const PKT_SEED=[
+  ["18:42:03.284","OUT","192.168.0.14","104.18.32.14","TCP","1.42 KB","Client Hello (TLS)"],
+  ["18:42:03.299","IN","104.18.32.14","192.168.0.14","TCP","1.24 KB","Server Hello (TLS)"],
+  ["18:42:03.312","OUT","192.168.0.14","104.18.32.14","TLS","517 B","Encrypted Handshake Data"],
+  ["18:42:03.418","IN","104.18.32.14","192.168.0.14","TLS","1.3 KB","Encrypted Application Data"],
+  ["18:42:03.612","OUT","192.168.0.14","142.250.66.78","TLS","612 B","Encrypted Application Data"],
+  ["18:42:03.718","IN","142.250.66.78","192.168.0.14","TCP","74 B","SYN, ACK"],
+  ["18:42:03.820","OUT","192.168.0.14","142.250.66.78","TLS","1.1 KB","Client Hello (TLS)"]
+];
+let pktRows=[...PKT_SEED];
+
+function fmtT(d){ return d.toISOString().split("T")[1].replace("Z","").slice(0,12); }
+function renderPkts(){
+  const f=($("#pf")?.value||"").toLowerCase();
+  const rows=pktRows.filter(r=>!f || r.join(" ").toLowerCase().includes(f)).slice(0,8);
+  $("#pkts").innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td class="dir-${r[1]==="OUT"?"out":"in"}">${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td><td>${r[6]}</td></tr>`).join("");
+}
+
+function showPage(id){
+  S.page=id;
+  $$(".page").forEach(p=>p.classList.toggle("on", p.id==="page-"+id));
+  const hideGlobe=id!=="map";
+  if(!hideGlobe) bindGlobe($("#globe"));
+  $("#globe").style.display=hideGlobe?"none":"block";
+  $("#labels").style.display=hideGlobe?"none":"block";
+  $(".gcard").style.display=hideGlobe?"none":"block";
+  $(".gctrl").style.display=hideGlobe?"none":"flex";
+  $(".legend").style.display=hideGlobe?"none":"block";
+  $(".wm").style.display=hideGlobe?"none":"flex";
+  $$("#tabs button, .rail .navbtn").forEach(b=>b.classList.toggle("on", b.dataset.go===id || (id==="map"&&b.id==="nb-live")));
+  if(id==="map") $$("#tabs button")[0].classList.add("on");
+  if(id==="devices") renderDevicesPage();
+  if(id==="alerts") renderAlertsPage();
+  if(id==="packets") $("#page-packets").innerHTML=`<h2>Packets</h2><p style="color:var(--muted)">Same live stream as the deck — use filters. Mock adapter, 200-row cap.</p>`;
+  if(id==="xray") $("#page-xray").innerHTML=`<h2>X-Ray</h2>${flow().hops.map(h=>`<div class="rrow"><div class="dotl"></div><div><b>${h.name}</b><div style="color:var(--muted)">${h.meta}</div></div><div>${h.ms}</div></div>`).join("")}`;
+  if(id==="reports") $("#page-reports").innerHTML=`<h2>Reports</h2><p style="color:var(--muted)">Scenario export lands in the next sprint. Current session is a seeded live mock.</p>`;
+  if(id==="infra") $("#page-infra").innerHTML=`<h2>Infrastructure</h2>${NODES.map(n=>`<div class="trow" data-node="${n.id}"><b>${n.name}</b><span style="color:var(--muted)">${n.sub} · ${n.lat.toFixed(2)}, ${n.lon.toFixed(2)}</span></div>`).join("")}`;
+  if(id==="settings") $("#page-settings").innerHTML=`<h2>Settings</h2><p style="color:var(--muted)">Demo MVP · mock repository · hash routes · localStorage devices/layers.</p>`;
+}
+
+function renderDevicesPage(){
+  $("#page-devices").innerHTML=`<h2>Devices</h2>
+    <div class="toolbar"><button class="btn pri" id="adddev">Add device</button>
+    <input id="dq" placeholder="Filter…" style="background:#08101a;border:1px solid var(--line);border-radius:8px;padding:6px 10px"></div>
+    <table class="crud"><thead><tr><th>Name</th><th>Type</th><th>IP</th><th>Status</th><th></th></tr></thead>
+    <tbody>${devices.map(d=>`<tr>
+      <td><a href="#/devices/${d.id}">${d.name}</a>${d.critical?" · critical":""}</td>
+      <td>${d.type}</td><td>${d.ip}</td><td style="color:${d.status==="online"?"var(--green)":"var(--muted)"}">${d.status}</td>
+      <td><button class="btn" data-edit="${d.id}">Edit</button> <button class="btn danger" data-del="${d.id}">Archive</button></td>
+    </tr>`).join("")}</tbody></table>`;
+}
+function renderAlertsPage(){
+  $("#page-alerts").innerHTML=`<h2>Alerts</h2>${alerts.map(a=>`<div class="alert ${a.sev==="warn"?"warn":a.sev==="info"?"info":""}" data-alert="${a.id}"><div><h5>${a.title}</h5><p>${a.body}</p></div></div>`).join("")}`;
+}
+
+function openDeviceForm(id){
+  const d=id?devices.find(x=>x.id===id):{name:"",type:"laptop",ip:"192.168.0.",net:"Wi-Fi 6",status:"online",critical:false};
+  $("#modal").className="modal on";
+  $("#modal").innerHTML=`<form class="box" id="dform"><h3>${id?"Edit device":"Add device"}</h3>
+    <label>Name</label><input name="name" required value="${d.name||""}">
+    <label>Type</label><select name="type"><option ${d.type==="laptop"?"selected":""}>laptop</option><option ${d.type==="phone"?"selected":""}>phone</option><option ${d.type==="iot"?"selected":""}>iot</option></select>
+    <label>IP</label><input name="ip" required value="${d.ip||""}">
+    <label>Network</label><input name="net" value="${d.net||"Wi-Fi 6"}">
+    <label><input type="checkbox" name="critical" ${d.critical?"checked":""}> Critical</label>
+    <div class="toolbar" style="margin-top:12px"><button class="btn pri" type="submit">Save</button><button type="button" class="btn" id="cx">Cancel</button></div></form>`;
+  $("#cx").onclick=()=>$("#modal").className="modal";
+  $("#dform").onsubmit=e=>{
+    e.preventDefault();
+    const fd=new FormData(e.target);
+    const row={id:id||("d"+Date.now()), name:fd.get("name"), type:fd.get("type"), ip:fd.get("ip"), net:fd.get("net"),
+      status:"online", up:0, down:0, critical: !!fd.get("critical")};
+    if(id){ const i=devices.findIndex(x=>x.id===id); devices[i]={...devices[i],...row}; }
+    else devices.push(row);
+    saveDev(); $("#modal").className="modal"; toast("Device saved"); renderDevicesPage();
+  };
+}
+
+/* mobile */
+function mbrand(back, title){
+  return back? `<button type="button" id="mback" style="color:var(--text);font-size:18px">←</button><b style="font-size:16px">${title||""}</b>` :
+    `<div class="brand"><svg class="mark" viewBox="0 0 32 32" width="22" height="22"><path d="M4 8 L16 28 L28 8" fill="none" stroke="#4ca3ff" stroke-width="2"/><path d="M10 8 L16 20 L22 8" fill="#4ca3ff"/></svg><div><b>TRACE</b><small>SEE WHERE YOUR DATA GOES</small></div></div>`;
+}
+
+function renderMobile(){
+  const root=$("#mroot");
+  const f=flow();
+  $("#mbrand").innerHTML = (S.m==="home"||S.m==="map"||S.m==="devices"||S.m==="alerts") && !["flow","alert","device","traffic"].includes(S.m)
+    ? mbrand(false) : mbrand(true, S.m==="flow"?"Flow":S.m==="alert"?"":S.m==="device"?"MacBook Pro":S.m==="traffic"?"Tráfico en tiempo real":"");
+  $$(".mnav button").forEach(b=>b.classList.toggle("on", b.dataset.m===S.m || (S.m==="flow"&&b.dataset.m==="map") || (S.m==="device"&&b.dataset.m==="devices") || (S.m==="alert"&&b.dataset.m==="alerts") || (S.m==="traffic"&&b.dataset.m==="home")));
+
+  if(S.m==="home"){
+    root.innerHTML=`<div class="hero"><h1>Your data has a path.</h1><p>See it. Understand it. Stay in control.</p></div>
+      <div class="mglobe" id="mstage"><canvas id="mglobe"></canvas><div class="mlabels" id="labels-m" style="position:absolute;inset:0;pointer-events:none"></div></div>
+      <div class="mcard">
+        <div class="ph"><h3>Live Traffic</h3><span class="pill"><span class="dot"></span> LIVE</span></div>
+        <div class="rates"><span class="up">↑ 38.4 <small>Mbps</small></span><span class="dn">↓ 4.8 <small>Mbps</small></span></div>
+        <div class="gstats"><div><b>2,847</b><span>Flows</span></div><div><b>38</b><span>Destinations</span></div><div><b class="al">2</b><span>Alerts</span></div></div>
+      </div>`;
+    mountMobileGlobe();
+  }
+  if(S.m==="map"){
+    root.innerHTML=`<div class="seg"><button class="on">Map</button><button data-m="traffic">List</button></div>
+      <div class="mglobe" style="height:48vh;margin-top:8px" id="mstage"><canvas id="mglobe"></canvas><div class="mlabels" style="position:absolute;inset:0;pointer-events:none"></div>
+        <div class="gctrl" style="top:8px"><button>☰</button><button>⌖</button><button>3D</button></div>
+      </div>
+      <div class="mcard" id="selcard">
+        <div class="ph"><span style="color:var(--muted)">Selected Flow</span><b>${f.rtt} ms</b></div>
+        <div class="sd" style="border:0;padding:0"><div class="ent"><div class="ic">${ICO.lap}</div><b>MacBook Pro</b></div>
+        <span>→</span><div class="ent"><div class="ic">${ICO.cld}</div><div><b>${f.dstName}</b><span>${f.city||f.dstIp}</span></div></div></div>
+        <div class="bar" style="margin-top:10px"><i style="width:70%"></i></div>
+      </div>`;
+    mountMobileGlobe();
+    $("#selcard").onclick=()=>go("#/flows/"+f.id);
+  }
+  if(S.m==="flow"){
+    const tabs=["Route","Packets","Details"];
+    root.innerHTML=`<div class="ph"><span></span><span class="pill"><span class="dot"></span> LIVE</span></div>
+      <div class="sd" style="border:0"><div class="ent"><div class="ic">${ICO.cld}</div><div><b>${f.dstName==="Cloudflare"||f.dstName==="google.com"? (S.flow==="G7B201"?"google.com":f.dstName):f.dstName}</b><span>${f.dstIp}</span></div></div><div><b style="font-size:22px">${f.rtt} ms</b><div style="color:var(--muted)">RTT</div></div></div>
+      <div class="itabs">${tabs.map(t=>`<button data-mtab="${t}" class="${S.mtab===t?"on":""}">${t}</button>`).join("")}</div>
+      ${(S.flow==="G7B201"?HOPS_GG:f.hops).map(h=>`<div class="rrow"><div class="dotl"></div><div><b>${h.name}</b><div style="color:var(--muted);font-size:11px">${h.meta}</div></div><div class="ms">${h.ms}</div></div>`).join("")}
+      <button class="cta pri btn" style="width:100%;margin-top:16px;background:transparent;border:1px solid var(--line-strong);color:var(--blue-hot)" data-go="map">Ver en el mapa</button>`;
+  }
+  if(S.m==="traffic"){
+    const rows=TRAFFIC.filter(t=>S.tfilter==="Todo"|| (S.tfilter==="Apps") || (S.tfilter==="Saliente"&&t.up) );
+    root.innerHTML=`<div class="ph"><h2 style="font-size:22px">Tráfico en tiempo real</h2><span>⌕</span></div>
+      <div class="chips">${["Todo","Apps","Entrante","Saliente"].map(c=>`<button data-tf="${c}" class="${S.tfilter===c?"on":""}">${c}</button>`).join("")}</div>
+      ${TRAFFIC.map(t=>`<div class="trow" data-flow="${t.flow}">
+        <span class="badge" style="background:#123">${t.ic}</span>
+        <div class="grow"><b>${t.app}</b><span style="color:var(--muted)">${t.ip}</span></div>
+        <div style="text-align:right"><span style="color:var(--muted)">${t.t}</span>
+        <div><span class="up">↑ ${t.up}</span> <span class="dn">↓ ${t.dn}</span> ${t.proto} ${t.bad?"⚠":""}</div></div>
+      </div>`).join("")}`;
+  }
+  if(S.m==="devices" || S.m==="device"){
+    const d=devices.find(x=>x.id===S.device)||devices[0];
+    if(S.m==="devices" && innerWidth<900 && location.hash.indexOf("/devices/")<0){
+      root.innerHTML=devices.map(x=>`<div class="trow" data-dev="${x.id}"><div class="ic">${ICO.lap}</div><div class="grow"><b>${x.name}</b><span style="color:var(--green)">${x.status==="online"?"En línea":x.status}</span></div></div>`).join("");
+    } else {
+      S.m="device";
+      $("#mbrand").innerHTML=mbrand(true);
+      root.innerHTML=`<div class="ph"><div class="ent"><div class="ic">${ICO.lap}</div><div><b>${d.name}</b><span style="color:var(--green)">En línea</span></div></div><button data-edit="${d.id}">⚙</button></div>
+        <div class="rates"><span class="up">↑ ${d.up} Mbps</span><span class="dn">↓ ${d.down} Mbps</span></div>
+        <div class="itabs">${["Apps","Destinos","Actividad"].map(t=>`<button data-dtab="${t}" class="${S.dtab===t?"on":""}">${t}</button>`).join("")}</div>
+        ${APPS.map(a=>`<div class="apro"><span class="badge" style="background:${a.c}33;color:${a.c}">${a.n[0]}</span><span style="width:90px">${a.n}</span><div class="bar"><i style="width:${a.p*3}%"></i></div><span>${a.p}%</span></div>`).join("")}`;
+    }
+  }
+  if(S.m==="alerts"){
+    root.innerHTML=alerts.map(a=>`<div class="trow" data-alert="${a.id}"><b>${a.title}</b><span style="color:var(--muted)">${a.when}</span></div>`).join("");
+  }
+  if(S.m==="alert"){
+    const a=alerts.find(x=>x.id===S.alert)||alerts[0];
+    $("#mbrand").innerHTML=mbrand(true);
+    root.innerHTML=`<div class="alpage">
+      <div class="boom">⚠</div>
+      <h1>${a.title}</h1>
+      <p style="color:var(--muted);max-width:320px;margin:0 auto 16px">${a.body}</p>
+      <div class="mcard" style="text-align:left"><b>185.220.101.5</b><div style="color:var(--muted)">Países Bajos</div><div class="up">↑ 17 MB · hace 2 min</div></div>
+      <div class="mglobe" style="height:160px;margin:12px 0" id="mstage"><canvas id="mglobe"></canvas></div>
+      <button class="cta red" id="block">Bloquear conexión</button>
+      <button class="cta ghost" data-flow="X9BAD">Ver detalles</button>
+    </div>`;
+    mountMobileGlobe();
+    $("#block").onclick=()=>{ if(confirm("¿Bloquear 185.220.101.5 en esta sesión?")) toast("Conexión bloqueada (simulado)"); };
+  }
+}
+
+function mountMobileGlobe(){
+  const c=$("#mglobe"); if(!c) return;
+  bindGlobe(c); resizeGL();
+}
+
+function applyHash(){
+  const fallback = innerWidth<900 ? "#/home" : "#/map";
+  const h=(location.hash||fallback).replace(/^#/,"");
+  const p=h.split("/").filter(Boolean);
+  if(p[0]==="home") { S.m="home"; S.page="map"; }
+  else if(p[0]==="map") { S.m="map"; S.page="map"; }
+  else if(p[0]==="traffic") { S.m="traffic"; S.page="packets"; }
+  else if(p[0]==="devices") { S.page="devices"; S.m=p[1]?"device":"devices"; if(p[1]) S.device=p[1]; }
+  else if(p[0]==="flows") { S.flow=p[1]||S.flow; S.m="flow"; S.page="map"; buildArcs(); }
+  else if(p[0]==="alerts") { S.page="alerts"; S.m=p[1]?"alert":"alerts"; if(p[1]) S.alert=p[1]; }
+  else if(p[0]==="infra") { S.page="infra"; }
+  else if(p[0]==="reports") { S.page="reports"; }
+  else if(p[0]==="settings") { S.page="settings"; }
+  else if(p[0]==="xray") { S.page="xray"; }
+  else if(p[0]==="packets") { S.page="packets"; }
+  else { S.page="map"; S.m= innerWidth<900 ? "home" : "map"; }
+  if(innerWidth>=900) showPage(S.page); else renderMobile();
+  renderInsp();
+}
+
+function routeFromClick(name){
+  const map={map:"#/map", devices:"#/devices", alerts:"#/alerts", reports:"#/reports", infra:"#/infra",
+    settings:"#/settings", xray:"#/xray", packets:"#/packets"};
+  go(map[name]||"#/map");
+}
+
+document.addEventListener("click", e=>{
+  const g=e.target.closest("[data-go]"); if(g){ e.preventDefault(); routeFromClick(g.dataset.go); }
+  const t=e.target.closest("[data-tab]"); if(t){ S.tab=t.dataset.tab; renderInsp(); }
+  const mt=e.target.closest("[data-mtab]"); if(mt){ S.mtab=mt.dataset.mtab; renderMobile(); }
+  const dt=e.target.closest("[data-dtab]"); if(dt){ S.dtab=dt.dataset.dtab; renderMobile(); }
+  const tf=e.target.closest("[data-tf]"); if(tf){ S.tfilter=tf.dataset.tf; renderMobile(); }
+  const al=e.target.closest("[data-alert]"); if(al){ go("#/alerts/"+al.dataset.alert); }
+  const fl=e.target.closest("[data-flow]"); if(fl){ go("#/flows/"+fl.dataset.flow); }
+  const dv=e.target.closest("[data-dev]"); if(dv){ go("#/devices/"+dv.dataset.dev); }
+  const nd=e.target.closest("[data-node]"); if(nd){
+    const hit=flows.find(f=>f.path.includes(nd.dataset.node))||flow();
+    go("#/flows/"+hit.id);
+  }
+  const ed=e.target.closest("[data-edit]"); if(ed) openDeviceForm(ed.dataset.edit);
+  const del=e.target.closest("[data-del]"); if(del){
+    const d=devices.find(x=>x.id===del.dataset.del);
+    const name=prompt(`Type ${d.name} to archive`);
+    if(name===d.name){ devices=devices.filter(x=>x.id!==d.id); saveDev(); toast("Archived"); renderDevicesPage(); }
+  }
+  if(e.target.id==="adddev") openDeviceForm();
+  if(e.target.id==="mback") history.back();
+  const mb=e.target.closest(".mnav button"); if(mb){ go("#/"+(mb.dataset.m==="home"?"home":mb.dataset.m)); }
+  const act=e.target.closest("[data-act]"); if(act){
+    if(act.dataset.act==="plus") setDist(G.dist*0.68);
+    if(act.dataset.act==="minus") setDist(G.dist*1.45);
+    if(act.dataset.act==="reset"){ G.rx=0.28; G.ry=2.62; setDist(2.45); G.auto=!reduced; }
+  }
+});
+document.addEventListener("change", e=>{
+  if(e.target.dataset.layer){ layerOn[e.target.dataset.layer]=e.target.checked; localStorage.setItem("trace.layers", JSON.stringify(layerOn)); earthKey=""; }
+});
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape"){ $("#modal").className="modal"; }
+  if(e.key==="+"||e.key==="=") setDist(G.dist*0.68);
+  if(e.key==="-") setDist(G.dist*1.45);
+});
+$("#q").addEventListener("input", e=>{
+  const v=e.target.value.toLowerCase();
+  const hit=flows.find(f=>f.id.toLowerCase().includes(v)||f.dstIp.includes(v)||f.dstName.toLowerCase().includes(v))
+    || devices.find(d=>d.name.toLowerCase().includes(v)||d.ip.includes(v));
+  if(hit && v.length>3){ if(hit.dstIp) go("#/flows/"+hit.id); else go("#/devices/"+hit.id); }
+});
+$("#pf")?.addEventListener("input", renderPkts);
+
+window.addEventListener("hashchange", applyHash);
+window.addEventListener("resize", ()=>{ resizeGL(); applyHash(); });
+
+let t0=performance.now();
+function tick(now){
+  try{ drawGlobe(now); }catch(err){ console.error(err); }
+  if(!/\bshot\b/.test(location.search)) requestAnimationFrame(tick);
+}
+
+function boot(){
+  renderLayers(); renderDests(); renderThreats(); renderPkts(); renderInsp();
+  try{ bindGlobe($("#globe")); applyHash(); }catch(err){ console.error(err); }
+  requestAnimationFrame(tick);
+  setInterval(()=>{
+    const n=new Date();
+    const cl=$("#clock"); if(cl) cl.textContent=n.toLocaleTimeString("en-GB",{hour12:false});
+    pktRows.unshift([fmtT(n), Math.random()>.5?"OUT":"IN", "192.168.0.14", Math.random()>.3?"104.18.32.14":"142.250.66.78","TLS", Math.floor(80+Math.random()*1400)+" B", "Encrypted Application Data"]);
+    if(pktRows.length>80) pktRows.length=80;
+    renderPkts();
+    const up=$("#up"); if(up) up.textContent=(38+Math.random()*1.2).toFixed(1);
+    const dn=$("#dn"); if(dn) dn.textContent=(4.6+Math.random()*0.4).toFixed(1);
+  }, 1000);
+  $("#pdev").innerHTML=`<option>All Devices</option>`+devices.map(d=>`<option>${d.name}</option>`).join("");
+}
+
+boot();
+})();
+</script>
+</body>
+</html>
